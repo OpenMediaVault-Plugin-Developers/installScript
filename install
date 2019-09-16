@@ -1,0 +1,102 @@
+#!/bin/bash
+
+declare -l codename
+declare -l omvCodename
+declare -i version
+
+omvKey="/etc/apt/trusted.gpg.d/openmediavault-archive-keyring.asc"
+omvRepo="http://packages.openmediavault.org/public"
+omvSources="/etc/apt/sources.list.d/openmediavault.list"
+url="https://github.com/OpenMediaVault-Plugin-Developers/packages/raw/master/"
+
+export DEBIAN_FRONTEND=noninteractive
+export APT_LISTCHANGES_FRONTEND=none
+export LANG=C.UTF-8
+
+codename="$(lsb_release --codename --short)"
+
+case ${codename} in
+  jessie)
+    omvCodename="erasmus"
+    version=3
+    ;;
+  stretch)
+    omvCodename="arrakis"
+    version=4
+    ;;
+  buster)
+    omvCodename="usul"
+    version=5
+    ;;
+  *)
+    echo "Unsupported version.  Exiting..."
+    exit 1
+  ;;
+esac
+echo "${omvCodename} :: ${version}"
+
+# install openmediavault if not installed already
+if dpkg -l openmediavault > /dev/null; then
+  echo "Installing openmediavault required packages..."
+  apt-get install --yes --no-install-recommends postfix  
+
+  echo "Adding openmediavault repo and key..."
+  echo "deb ${omvRepo} ${omvCodename} main" > ${omvSources}
+  wget -O "${omvKey}" ${omvRepo}/archive.key
+  apt-key add "${omvKey}"
+
+  echo "Updating repos..."
+  apt-get update
+
+  echo "Install openmediavault-keyring..."
+  apt-get --yes openmediavault-keyring
+
+  echo "Installing openmediavault..."
+  apt-get --yes --auto-remove --show-upgraded \
+	--allow-downgrades --allow-change-held-packages \
+	--no-install-recommends \
+	--option Dpkg::Options::="--force-confdef" \
+	--option DPkg::Options::="--force-confold" \
+	install openmediavault
+
+  if [ ${version} -eq 5 ]; then
+    omv-initsystem
+    omv-mkconf interfaces
+    omv-mkconf issue
+  elif [ ${version} -lt 5 ]; then
+    omv-confdbadm populate
+  fi
+fi
+
+if [ ${version} -eq 5 ]; then
+  echo "Downloading omv-extras.org plugin for openmediavault 5.x ..."
+  file="openmediavault-omvextrasorg_latest_all5.deb"
+elif [ ${version} -eq 4 ]; then
+  echo "Downloading omv-extras.org plugin for openmediavault 4.x ..."
+  file="openmediavault-omvextrasorg_latest_all4.deb"
+elif [ ${version} -eq 3 ]; then
+  echo "Downloading omv-extras.org plugin for openmediavault 3.x ..."
+  file="openmediavault-omvextrasorg_latest_all3.deb"
+else
+  echo "Unsupported version of openmediavault"
+  exit 1
+fi
+
+if [ -f "${file}" ]; then
+  rm ${file}
+fi
+wget --no-check-certificate ${url}/${file}
+if [ -f "${file}" ]; then
+  if ! dpkg -i ${file}; then
+    echo "Installing other dependencies ..."
+    apt-get -f install
+  fi
+
+  echo "Updating repos ..."
+  apt-get update
+else
+  echo "There was a problem downloading the package."
+fi
+
+exit 0
+
