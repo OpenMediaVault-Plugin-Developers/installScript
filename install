@@ -2,6 +2,7 @@
 
 declare -l codename
 declare -l omvCodename
+declare -l omvInstall=""
 declare -i version
 
 omvKey="/etc/apt/trusted.gpg.d/openmediavault-archive-keyring.asc"
@@ -36,7 +37,8 @@ esac
 echo "${omvCodename} :: ${version}"
 
 # install openmediavault if not installed already
-if dpkg -l openmediavault > /dev/null; then
+omvInstall=$(dpkg -l | awk '$2 == "openmediavault" { print $1 }')
+if [[ ! "${omvInstall}" == "ii" ]]; then
   echo "Installing openmediavault required packages..."
   apt-get install --yes --no-install-recommends postfix  
 
@@ -53,11 +55,11 @@ if dpkg -l openmediavault > /dev/null; then
 
   echo "Installing openmediavault..."
   apt-get --yes --auto-remove --show-upgraded \
-	--allow-downgrades --allow-change-held-packages \
-	--no-install-recommends \
-	--option Dpkg::Options::="--force-confdef" \
-	--option DPkg::Options::="--force-confold" \
-	install openmediavault
+    --allow-downgrades --allow-change-held-packages \
+    --no-install-recommends \
+    --option Dpkg::Options::="--force-confdef" \
+    --option DPkg::Options::="--force-confold" \
+    install openmediavault
 
   if [ ${version} -eq 5 ]; then
     omv-confdbadm populate
