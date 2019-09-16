@@ -40,7 +40,10 @@ echo "${omvCodename} :: ${version}"
 omvInstall=$(dpkg -l | awk '$2 == "openmediavault" { print $1 }')
 if [[ ! "${omvInstall}" == "ii" ]]; then
   echo "Installing openmediavault required packages..."
-  apt-get --yes --no-install-recommends install postfix  
+  if ! apt-get --yes --no-install-recommends install postfix; then
+    echo "failed installing postfix"
+    exit 2
+  fi
 
   echo "Adding openmediavault repo and key..."
   echo "deb ${omvRepo} ${omvCodename} main" > ${omvSources}
@@ -48,18 +51,24 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
   apt-key add "${omvKey}"
 
   echo "Updating repos..."
-  apt-get update
+  if ! apt-get update; then
+    echo "failed to update apt repos."
+    exit 2
+  fi
 
   echo "Install openmediavault-keyring..."
-  apt-get --yes install openmediavault-keyring
+  if ! apt-get --yes install openmediavault-keyring; then
+    echo "failed to install openmediavault-keyring package."
+    exit 2
+  fi
 
   echo "Installing openmediavault..."
-  apt-get --yes --auto-remove --show-upgraded \
-    --allow-downgrades --allow-change-held-packages \
-    --no-install-recommends \
-    --option Dpkg::Options::="--force-confdef" \
-    --option DPkg::Options::="--force-confold" \
-    install openmediavault
+  aptFlags="--yes --auto-remove --show-upgraded --allow-downgrades --allow-change-held-packages --no-install-recommends"
+  dpkgFlags="--option Dpkg::Options::=\"--force-confdef\" --option DPkg::Options::=\"--force-confold\""
+  if ! apt-get ${aptFlags} ${dpkgFlags} install openmediavault; then
+    echo "failed to install openmediavault package."
+    exit 2
+  fi
 
   if [ ${version} -eq 5 ]; then
     omv-confdbadm populate
@@ -68,6 +77,12 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
     omv-mkconf interfaces
     omv-mkconf issue
   fi
+fi
+
+omvInstall=$(dpkg -l | awk '$2 == "openmediavault" { print $1 }')
+if [[ ! "${omvInstall}" == "ii" ]]; then
+  echo "openmediavault package failed to install or is in a bad state."
+  exit 3
 fi
 
 if [ ${version} -eq 5 ]; then
@@ -101,4 +116,3 @@ else
 fi
 
 exit 0
-
