@@ -40,7 +40,7 @@ echo "${omvCodename} :: ${version}"
 omvInstall=$(dpkg -l | awk '$2 == "openmediavault" { print $1 }')
 if [[ ! "${omvInstall}" == "ii" ]]; then
   echo "Installing openmediavault required packages..."
-  apt-get install --yes --no-install-recommends postfix  
+  apt-get --yes --no-install-recommends install postfix  
 
   echo "Adding openmediavault repo and key..."
   echo "deb ${omvRepo} ${omvCodename} main" > ${omvSources}
@@ -51,7 +51,7 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
   apt-get update
 
   echo "Install openmediavault-keyring..."
-  apt-get --yes openmediavault-keyring
+  apt-get --yes install openmediavault-keyring
 
   echo "Installing openmediavault..."
   apt-get --yes --auto-remove --show-upgraded \
