@@ -60,11 +60,11 @@ if dpkg -l openmediavault > /dev/null; then
 	install openmediavault
 
   if [ ${version} -eq 5 ]; then
+    omv-confdbadm populate
+  elif [ ${version} -lt 5 ]; then
     omv-initsystem
     omv-mkconf interfaces
     omv-mkconf issue
-  elif [ ${version} -lt 5 ]; then
-    omv-confdbadm populate
   fi
 fi
 
@@ -87,9 +87,9 @@ if [ -f "${file}" ]; then
 fi
 wget --no-check-certificate ${url}/${file}
 if [ -f "${file}" ]; then
-  if ! dpkg -i ${file}; then
+  if ! dpkg --install ${file}; then
     echo "Installing other dependencies ..."
-    apt-get -f install
+    apt-get --fix-broken install
   fi
 
   echo "Updating repos ..."
