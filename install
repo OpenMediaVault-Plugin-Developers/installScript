@@ -64,8 +64,8 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
 
   echo "Installing openmediavault..."
   aptFlags="--yes --auto-remove --show-upgraded --allow-downgrades --allow-change-held-packages --no-install-recommends"
-  dpkgFlags="--option Dpkg::Options::=\"--force-confdef\" --option DPkg::Options::=\"--force-confold\""
-  if ! apt-get ${aptFlags} ${dpkgFlags} install openmediavault; then
+  cmd="apt-get ${aptFlags} install openmediavault"
+  if ! ${cmd}; then
     echo "failed to install openmediavault package."
     exit 2
   fi
