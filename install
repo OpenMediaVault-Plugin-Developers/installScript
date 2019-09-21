@@ -1,31 +1,52 @@
 #!/bin/bash
+#
+# shellcheck disable=SC1091,SC1117,SC2016,SC2046,SC2086
+#
+# Copyright (c) 2015-2019 OpenMediaVault Plugin Developers
+# Copyright (c) 2017-2019 Armbian Developers
+#
+# This file is licensed under the terms of the GNU General Public
+# License version 2. This program is licensed "as is" without any
+# warranty of any kind, whether express or implied.
+#
+# Ideas/code used from:
+# https://github.com/armbian/config/blob/master/debian-software
+# https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 
 declare -l codename
 declare -l omvCodename
 declare -l omvInstall=""
 declare -i version
 
+defaultGovSearch="^CONFIG_CPU_FREQ_DEFAULT_GOV_"
+ioniceCron="/etc/cron.d/make_nas_processes_faster"
+ioniceScript="/usr/sbin/omv-ionice"
 omvKey="/etc/apt/trusted.gpg.d/openmediavault-archive-keyring.asc"
 omvRepo="http://packages.openmediavault.org/public"
 omvSources="/etc/apt/sources.list.d/openmediavault.list"
+smbOptions="min receivefile size = 16384\nwrite cache size = 524288\ngetwd cache = yes\nsocket options = TCP_NODELAY IPTOS_LOWDELAY"
 url="https://github.com/OpenMediaVault-Plugin-Developers/packages/raw/master/"
 
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
 export LANG=C.UTF-8
 
+if [ -f /etc/armbian-release ]; then
+  . /etc/armbian-release
+fi
+
 codename="$(lsb_release --codename --short)"
 
 case ${codename} in
-  jessie)
-    omvCodename="erasmus"
-    version=3
-    ;;
   stretch)
+    confCmd="omv-mkconf"
+    ntp="ntp"
     omvCodename="arrakis"
     version=4
     ;;
   buster)
+    confCmd="omv-salt deploy run"
+    ntp="chrony"
     omvCodename="usul"
     version=5
     ;;
@@ -35,6 +56,12 @@ case ${codename} in
   ;;
 esac
 echo "${omvCodename} :: ${version}"
+
+hostname=$(</etc/hostname)
+tz=$(</etc/timezone)
+
+echo "Install prerequisites..."
+apt-get --yes --no-install-recommends install dirmngr gnupg
 
 # install openmediavault if not installed already
 omvInstall=$(dpkg -l | awk '$2 == "openmediavault" { print $1 }')
@@ -70,34 +97,31 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
     exit 2
   fi
 
-  if [ ${version} -eq 5 ]; then
+  if [ ${version} -gt 4 ]; then
     omv-confdbadm populate
-  elif [ ${version} -lt 5 ]; then
+  else
     omv-initsystem
     omv-mkconf interfaces
     omv-mkconf issue
   fi
 fi
 
+# check if openmediavault is install properly
 omvInstall=$(dpkg -l | awk '$2 == "openmediavault" { print $1 }')
 if [[ ! "${omvInstall}" == "ii" ]]; then
   echo "openmediavault package failed to install or is in a bad state."
   exit 3
 fi
 
-if [ ${version} -eq 5 ]; then
-  echo "Downloading omv-extras.org plugin for openmediavault 5.x ..."
-  file="openmediavault-omvextrasorg_latest_all5.deb"
-elif [ ${version} -eq 4 ]; then
-  echo "Downloading omv-extras.org plugin for openmediavault 4.x ..."
-  file="openmediavault-omvextrasorg_latest_all4.deb"
-elif [ ${version} -eq 3 ]; then
-  echo "Downloading omv-extras.org plugin for openmediavault 3.x ..."
-  file="openmediavault-omvextrasorg_latest_all3.deb"
-else
-  echo "Unsupported version of openmediavault"
-  exit 1
-fi
+. /etc/default/openmediavault
+. /usr/share/openmediavault/scripts/helper-functions
+
+# remove backports from sources.list to avoid duplicate sources warning
+sed -i "/\(stretch\|buster\)-backports/d" /etc/apt/sources.list
+
+# install omv-extras
+echo "Downloading omv-extras.org plugin for openmediavault ${version}.x ..."
+file="openmediavault-omvextrasorg_latest_all${version}.deb"
 
 if [ -f "${file}" ]; then
   rm ${file}
@@ -106,7 +130,7 @@ wget --no-check-certificate ${url}/${file}
 if [ -f "${file}" ]; then
   if ! dpkg --install ${file}; then
     echo "Installing other dependencies ..."
-    apt-get --fix-broken install
+    apt-get --yes --fix-broken install
   fi
 
   echo "Updating repos ..."
@@ -114,5 +138,121 @@ if [ -f "${file}" ]; then
 else
   echo "There was a problem downloading the package."
 fi
+
+# disable armbian log services if found
+for service in log2ram armbian-ramlog; do
+  if systemctl list-units --full -all | grep ${service}; then
+    systemctl stop ${service}
+    systemctl disable ${service}
+    rm -f /etc/cron.daily/${service}*
+  fi
+done
+
+# install flashmemory plugin
+echo "Install folder2ram..."
+if apt-get --yes --fix-missing --no-install-recommends install folder2ram; then
+  echo "Installed folder2ram."
+else
+  echo "Failed to install folder2ram."
+fi
+sleep 5
+echo "Install flashmemory plugin..."
+if apt-get --yes install openmediavault-flashmemory; then
+  echo "Installed flashmemory plugin."
+else
+  echo "Failed to install flashmemory plugin."
+fi
+
+# change default OMV settings
+xmlstarlet ed -L -u "/config/services/smb/extraoptions" -v "$(echo -e "${smbOptions}")" ${OMV_CONFIG_FILE}
+xmlstarlet ed -L -u "/config/services/ssh/enable" -v "1" ${OMV_CONFIG_FILE}
+xmlstarlet ed -L -u "/config/services/ssh/permitrootlogin" -v "1" ${OMV_CONFIG_FILE}
+xmlstarlet ed -L -u "/config/system/time/ntp/enable" -v "1" ${OMV_CONFIG_FILE}
+xmlstarlet ed -L -u "/config/system/time/timezone" -v "${tz}" ${OMV_CONFIG_FILE}
+xmlstarlet ed -L -u "/config/system/network/dns/hostname" -v "${hostname}" ${OMV_CONFIG_FILE}
+
+# disable monitoring and apply changes
+/usr/sbin/omv-rpc -u admin "perfstats" "set" '{"enable":false}'
+/usr/sbin/omv-rpc -u admin "config" "applyChanges" '{ "modules": ["monit","rrdcached","collectd"],"force": true }'
+
+# set min and max frequency for RPi boards
+if [[ "$(lsb_release --id --short)" == "Raspbian" ]]; then
+  MIN_SPEED="$(</sys/devices/system/cpu/cpufreq/policy0/cpuinfo_min_freq)"
+  MAX_SPEED="$(</sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq)"
+  # Determine if RPi4 (for future use)
+  if [[ $(awk '$1 == "Revision" { print $3 }' /proc/cpuinfo) =~ [a-c]03111 ]]; then
+    BOARD="rpi4"
+  fi
+  cat << EOF > /etc/default/cpufrequtils
+GOVERNOR="ondemand"
+MIN_SPEED="${MIN_SPEED}"
+MAX_SPEED="${MAX_SPEED}"
+EOF
+fi
+
+if [ -f "/etc/default/cpufrequtils" ]; then
+  . /etc/default/cpufrequtils
+else
+  # set cpufreq settings if no defaults
+  if [ -f "/proc/config.gz" ]; then
+    defaultGov="$(zgrep "${defaultGovSearch}" /proc/config.gz | sed -e "s/${defaultGovSearch}\(.*\)=y/\1/")"
+  elif [ -f "/boot/config-$(uname -r)" ]; then
+    defaultGov="$(grep "${defaultGovSearch}" /boot/config-$(uname -r) | sed -e "s/${defaultGovSearch}\(.*\)=y/\1/")"
+  fi
+  if [ -z "${DEFAULT_GOV}" ]; then
+    defaultGov="ondemand"
+  fi
+  GOVERNOR=${defaultGov,,}
+  MIN_SPEED="0"
+  MAX_SPEED="0"
+fi
+
+# set defaults in /etc/default/openmediavault
+omv_set_default "OMV_CPUFREQUTILS_GOVERNOR" "${GOVERNOR}"
+omv_set_default "OMV_CPUFREQUTILS_MINSPEED" "${MIN_SPEED}"
+omv_set_default "OMV_CPUFREQUTILS_MAXSPEED" "${MAX_SPEED}"
+
+# update config files
+for service in samba flashmemory ssh ${ntp} timezone monit rrdcached collectd cpufrequtils ; do
+  ${confCmd} ${service}
+done
+
+# Add a cron job to make NAS processes more snappy and silence rsyslog
+cat << EOF > /etc/rsyslog.d/omv-armbian.conf
+:msg, contains, "do ionice -c1" ~
+:msg, contains, "action " ~
+:msg, contains, "netsnmp_assert" ~
+:msg, contains, "Failed to initiate sched scan" ~
+EOF
+systemctl restart rsyslog
+
+# add taskset to ionice cronjob for biglittle boards
+case ${BOARD} in
+  odroidxu4|bananapim3|nanopifire3|nanopct3plus|nanopim3)
+    taskset='; taskset -c -p 4-7 ${srv}'
+    ;;
+  *rk3399*|*edge*|nanopct4|nanopim4|nanopineo4|renegade-elite|rockpi-4*|rockpro64)
+    taskset='; taskset -c -p 4-5 ${srv}'
+    ;;
+  odroidn2)
+    taskset='; taskset -c -p 2-5 ${srv}'
+    ;;
+esac
+
+# create ionice script
+cat << EOF > ${ioniceScript}
+#!/bin/sh
+
+for srv in \$(pgrep "ftpd|nfsiod|smbd"); do
+  ionice -c1 -p \${srv} ${taskset};
+done
+EOF
+chmod 755 ${ioniceScript}
+
+# create ionice cronjob
+cat << EOF > ${ioniceCron}
+* * * * * root ${ioniceScript} >/dev/null 2>&1
+EOF
+chmod 600 ${ioniceCron}
 
 exit 0
