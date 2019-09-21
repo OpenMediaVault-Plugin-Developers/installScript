@@ -18,6 +18,7 @@ declare -l omvCodename
 declare -l omvInstall=""
 declare -i version
 
+cpuFreqDef="/etc/default/cpufrequtils"
 defaultGovSearch="^CONFIG_CPU_FREQ_DEFAULT_GOV_"
 ioniceCron="/etc/cron.d/make_nas_processes_faster"
 ioniceScript="/usr/sbin/omv-ionice"
@@ -183,15 +184,15 @@ if [[ "$(lsb_release --id --short)" == "Raspbian" ]]; then
   if [[ $(awk '$1 == "Revision" { print $3 }' /proc/cpuinfo) =~ [a-c]03111 ]]; then
     BOARD="rpi4"
   fi
-  cat << EOF > /etc/default/cpufrequtils
+  cat << EOF > ${cpuFreqDef}
 GOVERNOR="ondemand"
 MIN_SPEED="${MIN_SPEED}"
 MAX_SPEED="${MAX_SPEED}"
 EOF
 fi
 
-if [ -f "/etc/default/cpufrequtils" ]; then
-  . /etc/default/cpufrequtils
+if [ -f "${cpuFreqDef}" ]; then
+  . ${cpuFreqDef}
 else
   # set cpufreq settings if no defaults
   if [ -f "/proc/config.gz" ]; then
