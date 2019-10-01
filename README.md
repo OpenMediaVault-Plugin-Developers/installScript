@@ -1,6 +1,6 @@
 # installScript
 
-# install the script's requistite
+# install the script's prerequisites
 apt-get install wget lsb-release sudo
 
 # download script and execute
