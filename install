@@ -22,6 +22,7 @@ cpuFreqDef="/etc/default/cpufrequtils"
 defaultGovSearch="^CONFIG_CPU_FREQ_DEFAULT_GOV_"
 ioniceCron="/etc/cron.d/make_nas_processes_faster"
 ioniceScript="/usr/sbin/omv-ionice"
+keyserver="hkp://keyserver.ubuntu.com:80"
 omvKey="/etc/apt/trusted.gpg.d/openmediavault-archive-keyring.asc"
 omvRepo="http://packages.openmediavault.org/public"
 omvSources="/etc/apt/sources.list.d/openmediavault.list"
@@ -37,6 +38,7 @@ if [ -f /etc/armbian-release ]; then
 fi
 
 codename="$(lsb_release --codename --short)"
+distributor="$(lsb_release --id --short)"
 
 case ${codename} in
   stretch)
@@ -60,6 +62,15 @@ echo "${omvCodename} :: ${version}"
 
 hostname=$(</etc/hostname)
 tz=$(</etc/timezone)
+
+# Add Debian signing keys to raspbian to prevent apt-get update failures
+# when OMV adds security and/or backports repos
+if [[ "${distributor}" == "Raspbian" ]]; then
+  echo "Adding Debian signing keys..."
+  for key in AA8E81B4331F7F50 112695A0E562B32A; do
+    apt-key adv --no-tty --keyserver ${keyserver} --recv-keys "${key}"
+  done
+fi
 
 echo "Install prerequisites..."
 apt-get --yes --no-install-recommends install dirmngr gnupg
@@ -177,7 +188,7 @@ xmlstarlet ed -L -u "/config/system/network/dns/hostname" -v "${hostname}" ${OMV
 /usr/sbin/omv-rpc -u admin "config" "applyChanges" '{ "modules": ["monit","rrdcached","collectd"],"force": true }'
 
 # set min and max frequency for RPi boards
-if [[ "$(lsb_release --id --short)" == "Raspbian" ]]; then
+if [[ "${distributor}" == "Raspbian" ]]; then
   MIN_SPEED="$(</sys/devices/system/cpu/cpufreq/policy0/cpuinfo_min_freq)"
   MAX_SPEED="$(</sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq)"
   # Determine if RPi4 (for future use)
