@@ -37,6 +37,11 @@ if [ -f /etc/armbian-release ]; then
   . /etc/armbian-release
 fi
 
+if [ ! -f "/usr/bin/lsb_release" ]; then
+  echo "Installing lsb_release..."
+  apt-get --yes --no-install-recommends install lsb-release
+fi
+
 codename="$(lsb_release --codename --short)"
 distributor="$(lsb_release --id --short)"
 
@@ -223,6 +228,11 @@ fi
 omv_set_default "OMV_CPUFREQUTILS_GOVERNOR" "${GOVERNOR}"
 omv_set_default "OMV_CPUFREQUTILS_MINSPEED" "${MIN_SPEED}"
 omv_set_default "OMV_CPUFREQUTILS_MAXSPEED" "${MAX_SPEED}"
+
+if [ ${version} -gt 4 ]; then
+  # update pillar default list - /srv/pillar/omv/default.sls
+  omv-salt stage run prepare
+fi
 
 # update config files
 for service in samba flashmemory ssh ${ntp} timezone monit rrdcached collectd cpufrequtils ; do
