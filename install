@@ -37,6 +37,9 @@ if [ -f /etc/armbian-release ]; then
   . /etc/armbian-release
 fi
 
+echo "Updating repos before installing..."
+apt-get update
+
 if [ ! -f "/usr/bin/lsb_release" ]; then
   echo "Installing lsb_release..."
   apt-get --yes --no-install-recommends install lsb-release
