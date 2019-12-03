@@ -75,7 +75,7 @@ tz=$(</etc/timezone)
 # when OMV adds security and/or backports repos
 if [[ "${distributor}" == "Raspbian" ]]; then
   echo "Adding Debian signing keys..."
-  for key in AA8E81B4331F7F50 112695A0E562B32A; do
+  for key in AA8E81B4331F7F50 112695A0E562B32A 04EE7237B7D453EC 648ACFD622F3D138; do
     apt-key adv --no-tty --keyserver ${keyserver} --recv-keys "${key}"
   done
 fi
