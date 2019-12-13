@@ -250,7 +250,7 @@ fi
 
 # Add a cron job to make NAS processes more snappy and silence rsyslog
 cat << EOF > /etc/rsyslog.d/omv-armbian.conf
-:msg, contains, "do ionice -c1" ~
+:msg, contains, "omv-ionice" ~
 :msg, contains, "action " ~
 :msg, contains, "netsnmp_assert" ~
 :msg, contains, "Failed to initiate sched scan" ~
