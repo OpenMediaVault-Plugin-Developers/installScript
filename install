@@ -45,6 +45,7 @@ if [ ! -f "/usr/bin/lsb_release" ]; then
   apt-get --yes --no-install-recommends install lsb-release
 fi
 
+arch="$(dpkg --print-architecture)"
 codename="$(lsb_release --codename --short)"
 distributor="$(lsb_release --id --short)"
 
@@ -241,6 +242,11 @@ fi
 for service in samba flashmemory ssh ${ntp} timezone monit rrdcached collectd cpufrequtils ; do
   ${confCmd} ${service}
 done
+
+if [[ "${arch}" == "amd64" ]] || [[ "${arch}" == "i386" ]]; then
+  # skip ionice on x86 boards
+  exit 0
+fi
 
 # Add a cron job to make NAS processes more snappy and silence rsyslog
 cat << EOF > /etc/rsyslog.d/omv-armbian.conf
