@@ -1,0 +1,47 @@
+#!/bin/bash
+
+declare -i version
+
+url="https://github.com/OpenMediaVault-Plugin-Developers/packages/raw/master/"
+
+version=$(dpkg -l openmediavault | awk '$2 == "openmediavault" { print substr($3,1,1) }')
+
+echo ${version}
+
+if [ ${version} -eq 5 ]; then
+  echo "Downloading omv-extras.org plugin for openmediavault 5.x ..."
+  file="openmediavault-omvextrasorg_latest_all5.deb"
+elif [ ${version} -eq 4 ]; then
+  echo "Downloading omv-extras.org plugin for openmediavault 4.x ..."
+  file="openmediavault-omvextrasorg_latest_all4.deb"
+elif [ ${version} -eq 3 ]; then
+  echo "Downloading omv-extras.org plugin for openmediavault 3.x ..."
+  file="openmediavault-omvextrasorg_latest_all3.deb"
+elif [ ${version} -eq 2 ]; then
+  echo "Downloading omv-extras.org plugin for openmediavault 2.x ..."
+  file="openmediavault-omvextrasorg_latest_all.deb"
+else
+  echo "Unsupported version of openmediavault"
+  exit 0
+fi
+
+if [ -f "${file}" ]; then
+  rm ${file}
+fi
+wget ${url}/${file}
+if [ -f "${file}" ]; then
+  dpkg -i ${file}
+
+  if [ $? -gt 0 ]; then
+    echo "Installing other dependencies ..."
+    apt-get -f install
+  fi
+
+  echo "Updating repos ..."
+  apt-get update
+else
+  echo "There was a problem downloading the package."
+fi
+
+exit 0
+
