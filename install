@@ -54,12 +54,14 @@ case ${codename} in
     confCmd="omv-mkconf"
     ntp="ntp"
     omvCodename="arrakis"
+    phpfpm="php-fpm"
     version=4
     ;;
   buster)
     confCmd="omv-salt deploy run"
     ntp="chrony"
     omvCodename="usul"
+    phpfpm="phpfpm"
     version=5
     ;;
   *)
@@ -239,7 +241,7 @@ if [ ${version} -gt 4 ]; then
 fi
 
 # update config files
-for service in samba flashmemory ssh ${ntp} timezone monit rrdcached collectd cpufrequtils ; do
+for service in nginx ${phpfpm} samba flashmemory ssh ${ntp} timezone monit rrdcached collectd cpufrequtils ; do
   ${confCmd} ${service}
 done
 
