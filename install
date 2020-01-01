@@ -292,23 +292,25 @@ exit 0
 
 # remove networkmanager and configure networkd
 if [ ${version} -gt 4 ]; then
-  nic="$(awk '/^.*NetworkManager.*dhcp.*\(.*\)/ { print $9 }' /var/log/syslog | sort | uniq | sed 's/[^a-zA-Z0-9]//g' | tail -1)"
-
-  if [ -n "${nic}" ]; then
+  nic="eth0"
+  if grep -qw "${nic}" /proc/net/dev; then
     echo "Removing network-manager ..."
     apt-get -y --autoremove purge network-manager
 
-    echo "Configure ${nic} to use networkd..."
-    echo -e "[Match]\nName=${nic}\n\n[Network]\nDHCP=both" > /etc/systemd/network/openmediavault-${nic,,}.network
+    echo "Enable and start systemd-resolved ..."
+    systemctl enable systemd-resolved
+    systemctl start systemd-resolved
+    rm /etc/resolv.conf
+    ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
+
+    echo "Configure ${nic} to use networkd ..."
+    mkdir -p /etc/systemd/network
+    echo -e "[Match]\nName=${nic}\n\n[Network]\nDHCP=yes" > /etc/systemd/network/openmediavault-${nic,,}.network
 
     echo "Enable networkd ..."
     systemctl enable systemd-networkd
 
-    echo "Enable simple dns ..."
-    rm -f /etc/resolv.conf
-    echo "nameserver 1.1.1.1" > /etc/resolv.conf
-
-    echo "It is recommended to run omv-firstaid or setup the network adapter in the openmediavault web interface."
+    echo "It is recommended to reboot and then setup the network adapter in the openmediavault web interface."
   fi
 fi
 
