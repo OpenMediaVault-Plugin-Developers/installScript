@@ -288,8 +288,6 @@ cat << EOF > ${ioniceCron}
 EOF
 chmod 600 ${ioniceCron}
 
-exit 0
-
 # remove networkmanager and configure networkd
 if [ ${version} -gt 4 ]; then
   nic="eth0"
