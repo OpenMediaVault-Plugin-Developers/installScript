@@ -288,12 +288,12 @@ cat << EOF > ${ioniceCron}
 EOF
 chmod 600 ${ioniceCron}
 
-# remove networkmanager and configure networkd
+# remove networkmanager and dhcpcd5 then configure networkd
 if [ ${version} -gt 4 ]; then
   nic="eth0"
   if grep -qw "${nic}" /proc/net/dev; then
-    echo "Removing network-manager ..."
-    apt-get -y --autoremove purge network-manager
+    echo "Removing network-manager and dhcpcd5 ..."
+    apt-get -y --autoremove purge network-manager dhcpcd5
 
     echo "Enable and start systemd-resolved ..."
     systemctl enable systemd-resolved
