@@ -2,8 +2,8 @@
 #
 # shellcheck disable=SC1091,SC1117,SC2016,SC2046,SC2086
 #
-# Copyright (c) 2015-2019 OpenMediaVault Plugin Developers
-# Copyright (c) 2017-2019 Armbian Developers
+# Copyright (c) 2015-2020 OpenMediaVault Plugin Developers
+# Copyright (c) 2017-2020 Armbian Developers
 #
 # This file is licensed under the terms of the GNU General Public
 # License version 2. This program is licensed "as is" without any
@@ -57,7 +57,7 @@ case ${codename} in
     phpfpm="php-fpm"
     version=4
     ;;
-  buster)
+  buster|eoan)
     confCmd="omv-salt deploy run"
     ntp="chrony"
     omvCodename="usul"
@@ -141,6 +141,10 @@ fi
 
 # remove backports from sources.list to avoid duplicate sources warning
 sed -i "/\(stretch\|buster\)-backports/d" /etc/apt/sources.list
+
+if [ "${codename}" = "eoan" ]; then
+  omv_set_default "OMV_APT_USE_KERNEL_BACKPORTS" false true
+fi
 
 # install omv-extras
 echo "Downloading omv-extras.org plugin for openmediavault ${version}.x ..."
