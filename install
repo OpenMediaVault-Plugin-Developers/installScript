@@ -21,6 +21,7 @@ fi
 declare -l codename
 declare -l omvCodename
 declare -l omvInstall=""
+declare -i skipFlash=0
 declare -i version
 
 cpuFreqDef="/etc/default/cpufrequtils"
@@ -41,6 +42,28 @@ export LANG=C.UTF-8
 if [ -f /etc/armbian-release ]; then
   . /etc/armbian-release
 fi
+
+while getopts "fh" opt; do
+  echo "option ${opt}"
+  case "${opt}" in
+    f)
+      skipFlash=1
+      ;;
+    h)
+      echo "Use the following flags:"
+      echo "  -f"
+      echo "    to skip the installation of the flashmemory plugin"
+      echo ""
+      echo "Examples:"
+      echo "  install"
+      echo "  install -f"
+      exit 100
+      ;;
+    \?)
+      echo "Invalid option: -${OPTARG}"
+      ;;
+  esac
+done
 
 echo "Updating repos before installing..."
 apt-get update
@@ -180,19 +203,23 @@ for service in log2ram armbian-ramlog; do
   fi
 done
 
-# install flashmemory plugin
-echo "Install folder2ram..."
-if apt-get --yes --fix-missing --no-install-recommends install folder2ram; then
-  echo "Installed folder2ram."
+# install flashmemory plugin unless disabled
+if [ ${skipFlash} -eq 1 ]; then
+  echo "Skipping installation of the flashmemory plugin."
 else
-  echo "Failed to install folder2ram."
-fi
-sleep 5
-echo "Install flashmemory plugin..."
-if apt-get --yes install openmediavault-flashmemory; then
-  echo "Installed flashmemory plugin."
-else
-  echo "Failed to install flashmemory plugin."
+  echo "Install folder2ram..."
+  if apt-get --yes --fix-missing --no-install-recommends install folder2ram; then
+    echo "Installed folder2ram."
+  else
+    echo "Failed to install folder2ram."
+  fi
+  sleep 5
+  echo "Install flashmemory plugin..."
+  if apt-get --yes install openmediavault-flashmemory; then
+    echo "Installed flashmemory plugin."
+  else
+    echo "Failed to install flashmemory plugin."
+  fi
 fi
 
 # change default OMV settings
