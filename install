@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# shellcheck disable=SC1091,SC1117,SC2016,SC2046,SC2086
+# shellcheck disable=SC1090,SC1091,SC1117,SC2016,SC2046,SC2086
 #
 # Copyright (c) 2015-2020 OpenMediaVault Plugin Developers
 # Copyright (c) 2017-2020 Armbian Developers
@@ -64,6 +64,11 @@ while getopts "fh" opt; do
       ;;
   esac
 done
+
+# Fix permissions on / if wrong
+echo "Current / permissions = $(stat -c %a /)"
+chmod g-w,o-w /
+echo "New / permissions = $(stat -c %a /)"
 
 echo "Updating repos before installing..."
 apt-get update
