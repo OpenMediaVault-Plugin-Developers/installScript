@@ -21,6 +21,7 @@ fi
 declare -l codename
 declare -l omvCodename
 declare -l omvInstall=""
+declare -l omvextrasInstall=""
 declare -i skipFlash=0
 declare -i version
 
@@ -191,6 +192,22 @@ if [ -f "${file}" ]; then
   if ! dpkg --install ${file}; then
     echo "Installing other dependencies ..."
     apt-get --yes --fix-broken install
+    omvextrasInstall=$(dpkg -l | awk '$2 == "openmediavault-omvextrasorg" { print $1 }')
+    if [[ ! "${omvextrasInstall}" == "ii" ]]; then
+      echo "omv-extras failed to install correctly.  Trying to fix with ${confCmd} ..."
+      if ${confCmd} omvextras; then
+        echo "Trying to fix apt ..."
+        apt-get --yes --fix-broken install
+      else
+        echo "${confCmd} failed and openmediavault-omvextrasorg is in a bad state."
+        exit 3
+      fi
+    fi
+    omvextrasInstall=$(dpkg -l | awk '$2 == "openmediavault-omvextrasorg" { print $1 }')
+    if [[ ! "${omvextrasInstall}" == "ii" ]]; then
+      echo "openmediavault-omvextrasorg package failed to install or is in a bad state."
+      exit 3
+    fi
   fi
 
   echo "Updating repos ..."
@@ -288,6 +305,7 @@ done
 
 if [[ "${arch}" == "amd64" ]] || [[ "${arch}" == "i386" ]]; then
   # skip ionice on x86 boards
+  echo "Done."
   exit 0
 fi
 
