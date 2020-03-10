@@ -347,6 +347,11 @@ cat << EOF > ${ioniceCron}
 EOF
 chmod 600 ${ioniceCron}
 
+if getent passwd pi > /dev/null; then
+  echo "Adding pi user to ssh group ..."
+  usermod -a -G ssh pi
+fi
+
 # remove networkmanager and dhcpcd5 then configure networkd
 if [ ${version} -gt 4 ]; then
   nic="eth0"
