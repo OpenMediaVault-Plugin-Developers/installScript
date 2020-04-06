@@ -187,7 +187,7 @@ file="openmediavault-omvextrasorg_latest_all${version}.deb"
 if [ -f "${file}" ]; then
   rm ${file}
 fi
-wget --no-check-certificate ${url}/${file}
+wget ${url}/${file}
 if [ -f "${file}" ]; then
   if ! dpkg --install ${file}; then
     echo "Installing other dependencies ..."
