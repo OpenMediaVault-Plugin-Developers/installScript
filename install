@@ -12,6 +12,9 @@
 # Ideas/code used from:
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
+#
+# version: 1.0.1
+#
 
 if [[ $(id -u) -ne 0 ]]; then
  echo "This script must be executed as root or using sudo."
@@ -217,13 +220,13 @@ else
 fi
 
 # disable armbian log services if found
-for service in log2ram armbian-ramlog; do
+for service in log2ram armbian-ramlog armbian-zram-config; do
   if systemctl list-units --full -all | grep ${service}; then
     systemctl stop ${service}
     systemctl disable ${service}
-    rm -f /etc/cron.daily/${service}*
   fi
 done
+rm -f /etc/cron.daily/armbian-ram-logging
 
 # install flashmemory plugin unless disabled
 if [ ${skipFlash} -eq 1 ]; then
