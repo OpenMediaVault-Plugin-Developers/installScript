@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.0.5
+# version: 1.0.6
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -390,11 +390,25 @@ if [ ${version} -gt 4 ]; then
     ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
 
     echo "Configure ${nic} to use networkd ..."
-    mkdir -p /etc/systemd/network
-    echo -e "[Match]\nName=${nic}\n\n[Network]\nDHCP=yes" > /etc/systemd/network/openmediavault-${nic,,}.network
+    mkdir -p /etc/netplan
 
-    echo "Enable networkd ..."
-    systemctl enable systemd-networkd
+    cat <<EOF > "/etc/netplan/10-openmediavault-default.yaml"
+network:
+  version: 2
+  renderer: networkd
+EOF
+
+    cat <<EOF > "/etc/netplan/20-openmediavault-${nic,,}.yaml"
+network:
+  ethernets:
+    ${nic,,}:
+      accept-ra: true
+      dhcp4: true
+      dhcp6: true
+EOF
+
+    echo "Applying netplan ..."
+    netplan apply
 
     echo "It is recommended to reboot and then setup the network adapter in the openmediavault web interface."
   fi
