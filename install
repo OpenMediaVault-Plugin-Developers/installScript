@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.0.6
+# version: 1.0.7
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -322,6 +322,16 @@ fi
 for service in nginx ${phpfpm} samba flashmemory ssh ${ntp} timezone monit rrdcached collectd cpufrequtils ; do
   ${confCmd} ${service}
 done
+
+# create php directories if they don't exist
+modDir="/var/lib/php/modules"
+if [ ! -d "${modDir}" ]; then
+  mkdir --parents --mode=0755 ${modDir}
+fi
+sessDir="/var/lib/php/sessions"
+if [ ! -d "${sessDir}" ]; then
+  mkdir --parents --mode=1733 ${sessDir}
+fi
 
 if [[ "${arch}" == "amd64" ]] || [[ "${arch}" == "i386" ]]; then
   # skip ionice on x86 boards
