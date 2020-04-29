@@ -385,7 +385,7 @@ fi
 # remove networkmanager and dhcpcd5 then configure networkd
 if [ ${version} -gt 4 ]; then
   defLink="/etc/systemd/network/99-default.link"
-  if [ -f "${defLink}" ]; then
+  if [ -e "${defLink}" ]; then
     rm -f "${defLink}"
   fi
   nic="eth0"
