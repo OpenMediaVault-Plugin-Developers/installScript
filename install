@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.0.8
+# version: 1.0.9
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -399,26 +399,107 @@ if [ ${version} -gt 4 ]; then
 
     echo "Configure ${nic} to use networkd ..."
     mkdir -p /etc/netplan
+    
+    # use preditable naming so doesn't break on reboot
+    nicMac=$(cat /sys/class/net/$nic/address | tr -d ':')
+    UUID=$(cat /proc/sys/kernel/random/uuid)
 
-    cat <<EOF > "/etc/netplan/10-openmediavault-default.yaml"
-network:
-  version: 2
-  renderer: networkd
-EOF
+    xmlstarlet ed -L \
+      -s "/config/system/network/interfaces" -t elem -n interfaceTMP \
+      -s //interfaceTMP -t elem -n uuid -v "$UUID" \
+      -s //interfaceTMP -t elem -n type -v "ethernet" \
+      -s //interfaceTMP -t elem -n devicename -v "enx$nicMac" \
+      -s //interfaceTMP -t elem -n method -v "dhcp" \
+      -s //interfaceTMP -t elem -n address \
+      -s //interfaceTMP -t elem -n netmask \
+      -s //interfaceTMP -t elem -n gateway \
+      -s //interfaceTMP -t elem -n method6 -v "dhcp" \
+      -s //interfaceTMP -t elem -n address6 \
+      -s //interfaceTMP -t elem -n netmask6 -v "64" \
+      -s //interfaceTMP -t elem -n gateway6 \
+      -s //interfaceTMP -t elem -n dnsnameservers \
+      -s //interfaceTMP -t elem -n dnssearch \
+      -s //interfaceTMP -t elem -n mtu -v "0" \
+      -s //interfaceTMP -t elem -n wol -v "0" \
+      -s //interfaceTMP -t elem -n comment \
+      -s //interfaceTMP -t elem -n slaves \
+      -s //interfaceTMP -t elem -n bondprimary \
+      -s //interfaceTMP -t elem -n bondmode -v "1" \
+      -s //interfaceTMP -t elem -n bondmiimon -v "0" \
+      -s //interfaceTMP -t elem -n bonddowndelay -v "0" \
+      -s //interfaceTMP -t elem -n bondupdelay -v "0" \
+      -s //interfaceTMP -t elem -n vlanid -v "1" \
+      -s //interfaceTMP -t elem -n vlanrawdevice \
+      -s //interfaceTMP -t elem -n wpassid \
+      -s //interfaceTMP -t elem -n wpapsk \
+      -r //interfaceTMP -v interface \
+      ${OMV_CONFIG_FILE}
 
-    cat <<EOF > "/etc/netplan/20-openmediavault-${nic,,}.yaml"
-network:
-  ethernets:
-    ${nic,,}:
-      accept-ra: true
-      dhcp4: true
-      dhcp6: true
-EOF
+    nic="wlan0"
+    if grep -qw "${nic}" /proc/net/dev; then
+      wpaConf="/etc/wpa_supplicant/wpa_supplicant.conf"
+      crda="/etc/default/crda"
 
-    echo "Applying netplan ..."
-    netplan apply
+      if [ -f $wpaConf ]; then
+        country=$(awk -F'=' '/country=/{gsub(/["\r]/,""); print $NF}' $wpaConf)
+        wifiName=$(awk -F'=' '/ssid="/{st=index($0,"="); ssid=substr($0,st+1); gsub(/["\r]/,"",ssid); print ssid}' $wpaConf)
+        wifiPass=$(awk -F'=' '/psk="/{st=index($0,"="); pass=substr($0,st+1); gsub(/["\r]/,"",pass); print pass}' $wpaConf)
 
-    echo "It is recommended to reboot and then setup the network adapter in the openmediavault web interface."
+        if [ -n "$country" ] && [ -n "$wifiName" ] && [ -n "$wifiPass" ]; then
+          if [ -f $crda ]; then
+            awk -i inplace -F'=' -v country="$country" '/REGDOMAIN=/{$0=$1"="country} {print $0}' $crda
+          fi
+
+          echo "Configure ${nic} to use networkd ..."
+          
+          UUID=$(cat /proc/sys/kernel/random/uuid)
+
+          xmlstarlet ed -L \
+            -s "/config/system/network/interfaces" -t elem -n interfaceTMP \
+            -s //interfaceTMP -t elem -n uuid -v "$UUID" \
+            -s //interfaceTMP -t elem -n type -v "wireless" \
+            -s //interfaceTMP -t elem -n devicename -v "$nic" \
+            -s //interfaceTMP -t elem -n method -v "dhcp" \
+            -s //interfaceTMP -t elem -n address \
+            -s //interfaceTMP -t elem -n netmask \
+            -s //interfaceTMP -t elem -n gateway \
+            -s //interfaceTMP -t elem -n method6 -v "dhcp" \
+            -s //interfaceTMP -t elem -n address6 \
+            -s //interfaceTMP -t elem -n netmask6 -v "64" \
+            -s //interfaceTMP -t elem -n gateway6 \
+            -s //interfaceTMP -t elem -n dnsnameservers \
+            -s //interfaceTMP -t elem -n dnssearch \
+            -s //interfaceTMP -t elem -n mtu -v "0" \
+            -s //interfaceTMP -t elem -n wol -v "0" \
+            -s //interfaceTMP -t elem -n comment \
+            -s //interfaceTMP -t elem -n slaves \
+            -s //interfaceTMP -t elem -n bondprimary \
+            -s //interfaceTMP -t elem -n bondmode -v "1" \
+            -s //interfaceTMP -t elem -n bondmiimon -v "0" \
+            -s //interfaceTMP -t elem -n bonddowndelay -v "0" \
+            -s //interfaceTMP -t elem -n bondupdelay -v "0" \
+            -s //interfaceTMP -t elem -n vlanid -v "1" \
+            -s //interfaceTMP -t elem -n vlanrawdevice \
+            -s //interfaceTMP -t elem -n wpassid -v "$wifiName" \
+            -s //interfaceTMP -t elem -n wpapsk -v "$wifiPass" \
+            -r //interfaceTMP -v interface \
+            ${OMV_CONFIG_FILE}
+        fi
+      fi
+    fi
+
+    echo "Applying network configuration ..."
+    omv-salt deploy run systemd-networkd
+
+    echo -e "\n"
+    echo -e "\e[7;49;92mNetwork interfaces have been configured with DHCP\e[0m"
+    echo -e "\e[7;49;92mFor more complex configurations, go to the OMV web interface BEFORE REBOOTING\e[0m"
+
+    echo ""
+    echo "OMV web interface currently available at:"
+    hostname -I | awk '{out="http://"$1; for(i=2;i<=NF;i++){out=out"\nhttp://"$i}; print out}'
+    echo ""
+
   fi
 fi
 
