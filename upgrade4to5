@@ -1,0 +1,75 @@
+#!/bin/bash
+#
+# shellcheck disable=SC1090,SC1091,SC1117,SC2016,SC2046,SC2086
+#
+# Copyright (c) 2019-2020 OpenMediaVault Plugin Developers
+#
+# This file is licensed under the terms of the GNU General Public
+# License version 2. This program is licensed "as is" without any
+# warranty of any kind, whether express or implied.
+#
+# version: 1.0.0
+#
+
+if [[ $(id -u) -ne 0 ]]; then
+  echo "This script must be executed as root or using sudo."
+  exit 99
+fi
+
+echo "Purging incompatible plugins ..."
+apt-get purge openmediavault-cups openmediavault-dnsmasq openmediavault-docker-gui openmediavault-domoticz \
+  openmediavault-duplicati openmediavault-eyefi openmediavault-ldap openmediavault-letsencrypt openmediavault-mysql \
+  openmediavault-nginx openmediavault-openvpn openmediavault-pxe openmediavault-remotedesktop openmediavault-route \
+  openmediavault-shellinabox openmediavault-syncthing openmediavault-transmissionbt openmediavault-urbackup-server \
+  openmediavault-vdo openmediavault-virtualbox openmediavault-webdav
+
+echo "Changing sources ..."
+sed -i "s/stretch/buster/g" /etc/apt/sources.list
+sed -i "s/stretch/buster/g" /etc/apt/sources.list.d/*
+sed -i "s/arrakis/usul/g" /etc/apt/sources.list.d/*
+sed -i "/[Dd]ocker/d" /etc/apt/sources.list.d/omvextras.list
+
+echo "Applying mtu fix ..."
+sed -i "s/<mtu><\/mtu>/<mtu>0<\/mtu>/g" /etc/openmediavault/config.xml
+
+if [ -f /etc/apt/apt.conf ]; then
+  echo "Changing apt.conf ..."
+  sed -i "s/stretch/buster/g" /etc/apt/apt.conf
+fi
+
+echo "Removing Packages archive file ..."
+rm -f /var/cache/openmediavault/archives/Packages
+
+armbian="/etc/apt/sources.list.d/armbian.list"
+if [ -f "${armbian}" ]; then
+  echo "Fixing Armbian repo ..."
+  echo "deb http://apt.armbian.com buster main buster-utils" | sudo tee ${armbian}
+fi
+
+echo "Running apt-get update ..."
+apt-get update
+
+echo "Running apt-get dist-upgrade ..."
+apt-get dist-upgrade
+
+arch="$(dpkg --print-architecture)"
+rule="/etc/udev/rules.d/80-net-setup-link.rules"
+
+if [ ! "${arch}" = "amd64" ] && [ ! "${arch}" = "i386" ]; then
+  echo "Disable predictive network device naming ..."
+  rm -fv ${rule}
+  ln -s /dev/null ${rule}
+fi
+
+echo "Reboot now."
+echo ""
+echo "Then run:"
+echo "  apt-get purge openmediavault-omvextrasorg resolvconf"
+echo "  wget -O - https://github.com/OpenMediaVault-Plugin-Developers/packages/raw/master/install | bash"
+echo "  apt-get update"
+echo "  apt-get dist-upgrade"
+echo ""
+echo "  omv-salt deploy run nginx"
+echo "  omv-salt deploy run phpfpm"
+echo ""
+echo "https://forum.openmediavault.org/index.php?thread/27909-omv-5-0-finally-out/&postID=219830#post219830"
