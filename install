@@ -391,6 +391,13 @@ if [ ${version} -gt 4 ]; then
     echo "Removing network-manager and dhcpcd5 ..."
     apt-get -y --autoremove purge network-manager dhcpcd5
 
+    echo "Disable predictive network adapter name ..."
+    rule="/etc/udev/rules.d/80-net-setup-link.rules"
+    if [ -e "${rule}" ]; then
+      rm -f ${rule}
+    fi
+    ln -s /dev/null /etc/udev/rules.d/80-net-setup-link.rules
+
     echo "Enable and start systemd-resolved ..."
     systemctl enable systemd-resolved
     systemctl start systemd-resolved
