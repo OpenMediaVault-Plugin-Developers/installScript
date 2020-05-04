@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# shellcheck disable=SC1090,SC1091,SC1117,SC2016,SC2046,SC2086
+# shellcheck disable=SC1090,SC1091,SC1117,SC2016,SC2046,SC2086,SC2174
 #
 # Copyright (c) 2015-2020 OpenMediaVault Plugin Developers
 # Copyright (c) 2017-2020 Armbian Developers
@@ -93,6 +93,7 @@ distributor="$(lsb_release --id --short)"
 case ${codename} in
   stretch)
     confCmd="omv-mkconf"
+    network="interfaces"
     ntp="ntp"
     omvCodename="arrakis"
     phpfpm="php-fpm"
@@ -100,6 +101,7 @@ case ${codename} in
     ;;
   buster|eoan)
     confCmd="omv-salt deploy run"
+    network="systemd-networkd"
     ntp="chrony"
     omvCodename="usul"
     phpfpm="phpfpm"
@@ -411,11 +413,7 @@ if [ ${version} -gt 4 ]; then
       omv-confdbadm update "conf.system.network.interface" -
 
     # create config files
-    if [ ${version} -gt 4 ]; then
-      ${confCmd} systemd-networkd
-    else
-      ${confCmd} interfaces
-    fi
+    ${confCmd} ${network}
 
     echo "It is recommended to reboot and then setup the network adapter in the openmediavault web interface."
   fi
