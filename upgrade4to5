@@ -16,6 +16,10 @@ if [[ $(id -u) -ne 0 ]]; then
   exit 99
 fi
 
+export DEBIAN_FRONTEND=noninteractive
+export APT_LISTCHANGES_FRONTEND=none
+export LANG=C.UTF-8
+
 echo "Purging incompatible plugins ..."
 apt-get purge openmediavault-cups openmediavault-dnsmasq openmediavault-docker-gui openmediavault-domoticz \
   openmediavault-duplicati openmediavault-eyefi openmediavault-ldap openmediavault-letsencrypt openmediavault-mysql \
