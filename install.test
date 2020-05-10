@@ -43,6 +43,7 @@ keyserver="hkp://keyserver.ubuntu.com:80"
 omvKey="/etc/apt/trusted.gpg.d/openmediavault-archive-keyring.asc"
 omvRepo="http://packages.openmediavault.org/public"
 omvSources="/etc/apt/sources.list.d/openmediavault.list"
+rfkill="/usr/sbin/rfkill"
 smbOptions="min receivefile size = 16384\nwrite cache size = 524288\ngetwd cache = yes\nsocket options = TCP_NODELAY IPTOS_LOWDELAY"
 url="https://github.com/OpenMediaVault-Plugin-Developers/packages/raw/master/"
 
@@ -432,6 +433,11 @@ if [ ${version} -gt 4 ]; then
         if [ -f "${crda}" ]; then
           awk -i inplace -F'=' -v country="$country" '/REGDOMAIN=/{$0=$1"="country} {print $0}' ${crda}
         fi
+        if [ -f "${rfkill}" ]; then
+          echo "Unblocking wifi with rfkill ..."
+          ${rfkill} unblock all
+        fi
+        echo "Adding ${nic} to openmedivault database ..."
         jq --null-input --compact-output \
           "{uuid: \"${OMV_CONFIGOBJECT_NEW_UUID}\", devicename: \"${nic}\", type: \"wireless\", method: \"dhcp\", method6: \"dhcp\", wpassid: \"${wifiName}\", wpapsk: \"${wifiPass}\"}" | \
           omv-confdbadm update "conf.system.network.interface" -
