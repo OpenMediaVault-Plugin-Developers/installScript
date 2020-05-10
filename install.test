@@ -27,6 +27,7 @@ if [ ! "${systemd}" = "systemd" ]; then
   exit 100
 fi
 
+declare -i cfg=0
 declare -l codename
 declare -l omvCodename
 declare -l omvInstall=""
@@ -384,39 +385,69 @@ fi
 
 # remove networkmanager and dhcpcd5 then configure networkd
 if [ ${version} -gt 4 ]; then
+
   defLink="/etc/systemd/network/99-default.link"
   if [ -e "${defLink}" ]; then
-    rm -f "${defLink}"
+    rm -fv "${defLink}"
   fi
+
+  echo "Removing network-manager and dhcpcd5 ..."
+  apt-get -y --autoremove purge network-manager dhcpcd5
+
+  echo "Disable predictive network adapter name ..."
+  rule="/etc/udev/rules.d/80-net-setup-link.rules"
+  if [ -e "${rule}" ]; then
+    rm -f ${rule}
+  fi
+  ln -s /dev/null /etc/udev/rules.d/80-net-setup-link.rules
+
+  echo "Enable and start systemd-resolved ..."
+  systemctl enable systemd-resolved
+  systemctl start systemd-resolved
+  rm /etc/resolv.conf
+  ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
+
   nic="eth0"
   if grep -qw "${nic}" /proc/net/dev; then
-    echo "Removing network-manager and dhcpcd5 ..."
-    apt-get -y --autoremove purge network-manager dhcpcd5
-
-    echo "Disable predictive network adapter name ..."
-    rule="/etc/udev/rules.d/80-net-setup-link.rules"
-    if [ -e "${rule}" ]; then
-      rm -f ${rule}
-    fi
-    ln -s /dev/null /etc/udev/rules.d/80-net-setup-link.rules
-
-    echo "Enable and start systemd-resolved ..."
-    systemctl enable systemd-resolved
-    systemctl start systemd-resolved
-    rm /etc/resolv.conf
-    ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
-
-    echo "Configure ${nic} to use networkd ..."
+    echo "Configure ${nic} ..."
     # add database entry
     jq --null-input --compact-output \
       "{uuid: \"${OMV_CONFIGOBJECT_NEW_UUID}\", devicename: \"${nic}\", method: \"dhcp\", method6: \"dhcp\"}" | \
       omv-confdbadm update "conf.system.network.interface" -
+    cfg=1
+  fi
+
+  nic="wlan0"
+  if grep -qw "${nic}" /proc/net/dev; then
+    echo "Configure ${nic} ..."
+    wpaConf="/etc/wpa_supplicant/wpa_supplicant.conf"
+    crda="/etc/default/crda"
+
+    if [ -f "${wpaConf}" ]; then
+      country=$(awk -F'=' '/country=/{gsub(/["\r]/,""); print $NF}' ${wpaConf})
+      wifiName=$(awk -F'=' '/ssid="/{st=index($0,"="); ssid=substr($0,st+1); gsub(/["\r]/,"",ssid); print ssid}' ${wpaConf})
+      wifiPass=$(awk -F'=' '/psk="/{st=index($0,"="); pass=substr($0,st+1); gsub(/["\r]/,"",pass); print pass}' ${wpaConf})
+
+      if [ -n "${country}" ] && [ -n "${wifiName}" ] && [ -n "${wifiPass}" ]; then
+        if [ -f "${crda}" ]; then
+          awk -i inplace -F'=' -v country="$country" '/REGDOMAIN=/{$0=$1"="country} {print $0}' ${crda}
+        fi
+        jq --null-input --compact-output \
+          "{uuid: \"${OMV_CONFIGOBJECT_NEW_UUID}\", devicename: \"${nic}\", method: \"dhcp\", method6: \"dhcp\", wpassid: \"${wifiName}\", wpapsk: \"${wifiPass}\"}" | \
+          omv-confdbadm update "conf.system.network.interface" -
+        cfg=1
+      fi
+    fi
+  fi
+
+  if [ ${cfg} -eq 1 ]; then
+    echo "IP address may change and you could lose connection if running this script via ssd."
 
     # create config files
     ${confCmd} ${network}
-
-    echo "It is recommended to reboot and then setup the network adapter in the openmediavault web interface."
   fi
+
+  echo "It is recommended to reboot and then setup the network adapter in the openmediavault web interface."
 fi
 
 exit 0
