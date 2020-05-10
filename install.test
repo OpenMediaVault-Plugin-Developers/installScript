@@ -417,9 +417,13 @@ if [ ${version} -gt 4 ]; then
     cfg=1
   fi
 
+  if [ -f "${rfkill}" ]; then
+    echo "Unblocking wifi with rfkill ..."
+    ${rfkill} unblock all
+  fi
+
   nic="wlan0"
   if grep -qw "${nic}" /proc/net/dev; then
-    echo "Configure ${nic} ..."
     wpaConf="/etc/wpa_supplicant/wpa_supplicant.conf"
     crda="/etc/default/crda"
 
@@ -431,10 +435,6 @@ if [ ${version} -gt 4 ]; then
       if [ -n "${country}" ] && [ -n "${wifiName}" ] && [ -n "${wifiPass}" ]; then
         if [ -f "${crda}" ]; then
           awk -i inplace -F'=' -v country="$country" '/REGDOMAIN=/{$0=$1"="country} {print $0}' ${crda}
-        fi
-        if [ -f "${rfkill}" ]; then
-          echo "Unblocking wifi with rfkill ..."
-          ${rfkill} unblock all
         fi
         echo "Adding ${nic} to openmedivault database ..."
         jq --null-input --compact-output \
