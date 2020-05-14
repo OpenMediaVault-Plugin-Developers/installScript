@@ -8,7 +8,7 @@
 # License version 2. This program is licensed "as is" without any
 # warranty of any kind, whether express or implied.
 #
-# version: 1.0.0
+# version: 1.0.1
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -25,7 +25,8 @@ apt-get purge openmediavault-cups openmediavault-dnsmasq openmediavault-docker-g
   openmediavault-duplicati openmediavault-eyefi openmediavault-ldap openmediavault-letsencrypt openmediavault-mysql \
   openmediavault-nginx openmediavault-openvpn openmediavault-pxe openmediavault-remotedesktop openmediavault-route \
   openmediavault-shellinabox openmediavault-syncthing openmediavault-transmissionbt openmediavault-urbackup-server \
-  openmediavault-vdo openmediavault-virtualbox openmediavault-webdav
+  openmediavault-vdo openmediavault-virtualbox openmediavault-webdav \
+  openmediavault-netatalk openmediavault-route
 
 echo "Changing sources ..."
 sed -i "s/stretch/buster/g" /etc/apt/sources.list
