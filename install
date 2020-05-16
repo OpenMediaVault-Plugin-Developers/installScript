@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.1.0
+# version: 1.1.1
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -409,7 +409,9 @@ if [ ${version} -gt 4 ]; then
   ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
 
   nic="eth0"
-  if grep -qw "${nic}" /proc/net/dev; then
+  if grep -q "<devicename>${nic}</devicename>" ${OMV_CONFIG_FILE}; then
+    echo "${nic} already found in database.  Skipping..."
+  elif grep -qw "${nic}" /proc/net/dev; then
     echo "Adding ${nic} to openmedivault database ..."
     jq --null-input --compact-output \
       "{uuid: \"${OMV_CONFIGOBJECT_NEW_UUID}\", devicename: \"${nic}\", method: \"dhcp\", method6: \"dhcp\"}" | \
@@ -423,7 +425,9 @@ if [ ${version} -gt 4 ]; then
   fi
 
   nic="wlan0"
-  if grep -qw "${nic}" /proc/net/dev; then
+  if grep -q "<devicename>${nic}</devicename>" ${OMV_CONFIG_FILE}; then
+    echo "${nic} already found in database.  Skipping..."
+  elif grep -qw "${nic}" /proc/net/dev; then
     wpaConf="/etc/wpa_supplicant/wpa_supplicant.conf"
     crda="/etc/default/crda"
 
