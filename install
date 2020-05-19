@@ -36,6 +36,7 @@ declare -i skipFlash=0
 declare -i version
 
 cpuFreqDef="/etc/default/cpufrequtils"
+crda="/etc/default/crda"
 defaultGovSearch="^CONFIG_CPU_FREQ_DEFAULT_GOV_"
 ioniceCron="/etc/cron.d/make_nas_processes_faster"
 ioniceScript="/usr/sbin/omv-ionice"
@@ -46,6 +47,7 @@ omvSources="/etc/apt/sources.list.d/openmediavault.list"
 rfkill="/usr/sbin/rfkill"
 smbOptions="min receivefile size = 16384\nwrite cache size = 524288\ngetwd cache = yes\nsocket options = TCP_NODELAY IPTOS_LOWDELAY"
 url="https://github.com/OpenMediaVault-Plugin-Developers/packages/raw/master/"
+wpaConf="/etc/wpa_supplicant/wpa_supplicant.conf"
 
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
@@ -395,65 +397,56 @@ if [ ${version} -gt 4 ]; then
   echo "Removing network-manager and dhcpcd5 ..."
   apt-get -y --autoremove purge network-manager dhcpcd5
 
-  echo "Disable predictive network adapter name ..."
-  rule="/etc/udev/rules.d/80-net-setup-link.rules"
-  if [ -e "${rule}" ]; then
-    rm -f ${rule}
-  fi
-  ln -s /dev/null /etc/udev/rules.d/80-net-setup-link.rules
-
   echo "Enable and start systemd-resolved ..."
   systemctl enable systemd-resolved
   systemctl start systemd-resolved
   rm /etc/resolv.conf
   ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
 
-  nic="eth0"
-  if grep -q "<devicename>${nic}</devicename>" ${OMV_CONFIG_FILE}; then
-    echo "${nic} already found in database.  Skipping..."
-  else
-    echo "Adding ${nic} to openmedivault database ..."
-    jq --null-input --compact-output \
-      "{uuid: \"${OMV_CONFIGOBJECT_NEW_UUID}\", devicename: \"${nic}\", method: \"dhcp\", method6: \"dhcp\"}" | \
-      omv-confdbadm update "conf.system.network.interface" -
-    cfg=1
-  fi
-
   if [ -f "${rfkill}" ]; then
     echo "Unblocking wifi with rfkill ..."
     ${rfkill} unblock all
   fi
 
-  nic="wlan0"
-  if grep -q "<devicename>${nic}</devicename>" ${OMV_CONFIG_FILE}; then
-    echo "${nic} already found in database.  Skipping..."
-  elif grep -qw "${nic}" /proc/net/dev; then
-    wpaConf="/etc/wpa_supplicant/wpa_supplicant.conf"
-    crda="/etc/default/crda"
-
-    if [ -f "${wpaConf}" ]; then
-      country=$(awk -F'=' '/country=/{gsub(/["\r]/,""); print $NF}' ${wpaConf})
-      wifiName=$(awk -F'=' '/ssid="/{st=index($0,"="); ssid=substr($0,st+1); gsub(/["\r]/,"",ssid); print ssid}' ${wpaConf})
-      wifiPass=$(awk -F'=' '/psk="/{st=index($0,"="); pass=substr($0,st+1); gsub(/["\r]/,"",pass); print pass}' ${wpaConf})
-
-      if [ -n "${country}" ] && [ -n "${wifiName}" ] && [ -n "${wifiPass}" ]; then
-        if [ -f "${crda}" ]; then
-          awk -i inplace -F'=' -v country="$country" '/REGDOMAIN=/{$0=$1"="country} {print $0}' ${crda}
-        fi
-        echo "Adding ${nic} to openmedivault database ..."
-        jq --null-input --compact-output \
-          "{uuid: \"${OMV_CONFIGOBJECT_NEW_UUID}\", devicename: \"${nic}\", type: \"wireless\", method: \"dhcp\", method6: \"dhcp\", wpassid: \"${wifiName}\", wpapsk: \"${wifiPass}\"}" | \
-          omv-confdbadm update "conf.system.network.interface" -
-        cfg=1
-      fi
+  for nic in $(ls /sys/class/net | grep -v lo); do
+    if grep -q "<devicename>${nic}</devicename>" ${OMV_CONFIG_FILE}; then
+      echo "${nic} already found in database.  Skipping..."
+      continue
     fi
-  fi
+
+    if udevadm info /sys/class/net/${nic} | grep -q wlan; then
+      if [ -f "${wpaConf}" ]; then
+        country=$(awk -F'=' '/country=/{gsub(/["\r]/,""); print $NF}' ${wpaConf})
+        wifiName=$(awk -F'=' '/ssid="/{st=index($0,"="); ssid=substr($0,st+1); gsub(/["\r]/,"",ssid); print ssid}' ${wpaConf})
+        wifiPass=$(awk -F'=' '/psk="/{st=index($0,"="); pass=substr($0,st+1); gsub(/["\r]/,"",pass); print pass}' ${wpaConf})
+
+        if [ -n "${country}" ] && [ -n "${wifiName}" ] && [ -n "${wifiPass}" ]; then
+          if [ -f "${crda}" ]; then
+            awk -i inplace -F'=' -v country="$country" '/REGDOMAIN=/{$0=$1"="country} {print $0}' ${crda}
+          fi
+          echo "Adding ${nic} to openmedivault database ..."
+          jq --null-input --compact-output \
+            "{uuid: \"${OMV_CONFIGOBJECT_NEW_UUID}\", devicename: \"${nic}\", type: \"wireless\", method: \"dhcp\", method6: \"dhcp\", wpassid: \"${wifiName}\", wpapsk: \"${wifiPass}\"}" | \
+            omv-confdbadm update "conf.system.network.interface" -
+          cfg=1
+        fi
+      fi
+    else
+      echo "Adding ${nic} to openmedivault database ..."
+      jq --null-input --compact-output \
+        "{uuid: \"${OMV_CONFIGOBJECT_NEW_UUID}\", devicename: \"${nic}\", method: \"dhcp\", method6: \"dhcp\"}" | \
+        omv-confdbadm update "conf.system.network.interface" -
+      cfg=1
+    fi
+  done
 
   if [ ${cfg} -eq 1 ]; then
     echo "IP address may change and you could lose connection if running this script via ssd."
 
     # create config files
     ${confCmd} ${network}
+
+    reboot
   fi
 
   echo "It is recommended to reboot and then setup the network adapter in the openmediavault web interface."
