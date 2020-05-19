@@ -1,12 +1,12 @@
 # installScript
 
-# please use a new SD card if installing on an arm/sbc device.
+## please use a new SD card if installing on an arm/sbc device.
 
 # install the script's prerequisites
 apt-get install wget sudo
 
 # download script and execute
-# the wget option -O needs to be a capital letter 'O'
+### the wget option -O needs to be a capital letter 'O'
 wget -O - https://github.com/OpenMediaVault-Plugin-Developers/installScript/raw/master/install | sudo bash
 
 # a detailed guide is available for this script as well
