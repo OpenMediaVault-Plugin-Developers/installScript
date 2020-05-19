@@ -411,7 +411,7 @@ if [ ${version} -gt 4 ]; then
   nic="eth0"
   if grep -q "<devicename>${nic}</devicename>" ${OMV_CONFIG_FILE}; then
     echo "${nic} already found in database.  Skipping..."
-  elif grep -qw "${nic}" /proc/net/dev; then
+  else
     echo "Adding ${nic} to openmedivault database ..."
     jq --null-input --compact-output \
       "{uuid: \"${OMV_CONFIGOBJECT_NEW_UUID}\", devicename: \"${nic}\", method: \"dhcp\", method6: \"dhcp\"}" | \
