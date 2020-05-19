@@ -6,6 +6,7 @@
 apt-get install wget sudo
 
 # download script and execute
+# the wget option -O needs to be a capital letter 'O'
 wget -O - https://github.com/OpenMediaVault-Plugin-Developers/installScript/raw/master/install | sudo bash
 
 # a detailed guide is available for this script as well
