@@ -415,7 +415,7 @@ if [ ${version} -gt 4 ]; then
     wifi="wifi"
   fi
 
-  for nic in $(ls /sys/class/net | grep -v lo); do
+  for nic in $(ls /sys/class/net | grep -vE "br-|docker|lo|tun|virbr"); do
     if grep -q "<devicename>${nic}</devicename>" ${OMV_CONFIG_FILE}; then
       echo "${nic} already found in database.  Skipping..."
       continue
