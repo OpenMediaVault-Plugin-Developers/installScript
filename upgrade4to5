@@ -32,8 +32,7 @@ echo "Changing sources ..."
 sed -i "s/stretch/buster/g" /etc/apt/sources.list
 sed -i "s/stretch/buster/g" /etc/apt/sources.list.d/*
 sed -i "s/arrakis/usul/g" /etc/apt/sources.list.d/*
-sed -i "/[Dd]ocker/d" /etc/apt/sources.list.d/omvextras.list
-sed -i "/[Dd]ocker/d" /etc/apt/sources.list.d/omv-extras-org.list
+sed -i "/[Dd]ocker/d" /etc/apt/sources.list.d/omv*
 
 echo "Applying mtu fix ..."
 sed -i "s/<mtu><\/mtu>/<mtu>0<\/mtu>/g" /etc/openmediavault/config.xml
