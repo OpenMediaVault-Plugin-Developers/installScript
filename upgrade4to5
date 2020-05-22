@@ -52,6 +52,8 @@ if [ -f "${armbian}" ]; then
   echo "deb http://apt.armbian.com buster main buster-utils" | sudo tee ${armbian}
 fi
 
+echo 'Debian GNU/Linux 10 \n \l' > /etc/issue
+
 echo "Running apt-get update ..."
 apt-get update
 
