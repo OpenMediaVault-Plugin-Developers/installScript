@@ -103,7 +103,7 @@ case ${codename} in
     phpfpm="php-fpm"
     version=4
     ;;
-  buster|eoan)
+  buster)
     confCmd="omv-salt deploy run"
     network="systemd-networkd"
     ntp="chrony"
