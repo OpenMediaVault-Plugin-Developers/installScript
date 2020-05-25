@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.1.2
+# version: 1.1.3
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -323,7 +323,7 @@ if [ ${version} -gt 4 ]; then
 fi
 
 # update config files
-for service in nginx ${phpfpm} samba flashmemory ssh ${ntp} timezone monit rrdcached collectd cpufrequtils ; do
+for service in nginx ${phpfpm} samba flashmemory ssh ${ntp} timezone monit rrdcached collectd cpufrequtils apt; do
   ${confCmd} ${service}
 done
 
