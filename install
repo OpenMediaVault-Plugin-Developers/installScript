@@ -431,8 +431,8 @@ if [ ${version} -gt 4 ] && [ ${skipNet} -ne 1 ]; then
     if udevadm info /sys/class/net/${nic} | grep -q wlan; then
       if [ -f "${wpaConf}" ]; then
         country=$(awk -F'=' '/country=/{gsub(/["\r]/,""); print $NF}' ${wpaConf})
-        wifiName=$(awk -F'=' '/ssid="/{st=index($0,"="); ssid=substr($0,st+1); gsub(/["\r]/,"",ssid); print ssid}' ${wpaConf})
-        wifiPass=$(awk -F'=' '/psk="/{st=index($0,"="); pass=substr($0,st+1); gsub(/["\r]/,"",pass); print pass}' ${wpaConf})
+        wifiName=$(awk -F'=' '/ssid="/{st=index($0,"="); ssid=substr($0,st+1); gsub(/["\r]/,"",ssid); print ssid; exit}' ${wpaConf})
+        wifiPass=$(awk -F'=' '/psk="/{st=index($0,"="); pass=substr($0,st+1); gsub(/["\r]/,"",pass); print pass; exit}' ${wpaConf})
 
         if [ -n "${country}" ] && [ -n "${wifiName}" ] && [ -n "${wifiPass}" ]; then
           if [ -f "${crda}" ]; then
