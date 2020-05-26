@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.1.3
+# version: 1.1.2
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -33,6 +33,7 @@ declare -l omvCodename
 declare -l omvInstall=""
 declare -l omvextrasInstall=""
 declare -i skipFlash=0
+declare -i skipNet=0
 declare -i version
 
 cpuFreqDef="/etc/default/cpufrequtils"
@@ -57,7 +58,7 @@ if [ -f /etc/armbian-release ]; then
   . /etc/armbian-release
 fi
 
-while getopts "fh" opt; do
+while getopts "fhn" opt; do
   echo "option ${opt}"
   case "${opt}" in
     f)
@@ -67,11 +68,17 @@ while getopts "fh" opt; do
       echo "Use the following flags:"
       echo "  -f"
       echo "    to skip the installation of the flashmemory plugin"
+      echo "  -n"
+      echo "    to skip the network setup"
       echo ""
       echo "Examples:"
       echo "  install"
       echo "  install -f"
+      echo "  install -n"
       exit 100
+      ;;
+    n)
+      skipNet=1
       ;;
     \?)
       echo "Invalid option: -${OPTARG}"
@@ -387,7 +394,7 @@ if getent passwd pi > /dev/null; then
 fi
 
 # remove networkmanager and dhcpcd5 then configure networkd
-if [ ${version} -gt 4 ]; then
+if [ ${version} -gt 4 ] && [ ${skipNet} -ne 1 ]; then
 
   defLink="/etc/systemd/network/99-default.link"
   if [ -e "${defLink}" ]; then
