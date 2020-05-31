@@ -60,6 +60,9 @@ echo 'Debian GNU/Linux 10 \n \l' > /etc/issue
 echo "Running apt-get update ..."
 apt-get update
 
+echo "Updating base-files ..."
+apt-get --yes --option DPkg::Options::="--force-confnew" install base-files
+
 echo "Running apt-get dist-upgrade ..."
 apt-get dist-upgrade
 
