@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.1.4
+# version: 1.1.5
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -288,7 +288,7 @@ xmlstarlet ed -L -u "/config/system/network/dns/hostname" -v "${hostname}" ${OMV
 /usr/sbin/omv-rpc -u admin "config" "applyChanges" '{ "modules": ["monit","rrdcached","collectd"],"force": true }'
 
 # set min/max frequency and watchdog for RPi boards
-if [[ "${distributor}" == "Raspbian" ]]; then
+if [[ $(awk '$1 == "Model" { print $3 }' /proc/cpuinfo) = "Raspberry" ]]; then
   omv_set_default "OMV_WATCHDOG_DEFAULT_MODULE" "bcm2835_wdt"
   omv_set_default "OMV_WATCHDOG_CONF_WATCHDOG_TIMEOUT" "14"
 
