@@ -458,7 +458,7 @@ if [ ${version} -gt 4 ] && [ ${skipNet} -ne 1 ]; then
   done
 
   if [ ${cfg} -eq 1 ]; then
-    echo "IP address may change and you could lose connection if running this script via ssd."
+    echo "IP address may change and you could lose connection if running this script via ssh."
 
     # create config files
     ${confCmd} ${network}
