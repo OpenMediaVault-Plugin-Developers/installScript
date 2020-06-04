@@ -276,12 +276,12 @@ else
 fi
 
 # change default OMV settings
-xmlstarlet ed -L -u "/config/services/smb/extraoptions" -v "$(echo -e "${smbOptions}")" ${OMV_CONFIG_FILE}
-xmlstarlet ed -L -u "/config/services/ssh/enable" -v "1" ${OMV_CONFIG_FILE}
-xmlstarlet ed -L -u "/config/services/ssh/permitrootlogin" -v "1" ${OMV_CONFIG_FILE}
-xmlstarlet ed -L -u "/config/system/time/ntp/enable" -v "1" ${OMV_CONFIG_FILE}
-xmlstarlet ed -L -u "/config/system/time/timezone" -v "${tz}" ${OMV_CONFIG_FILE}
-xmlstarlet ed -L -u "/config/system/network/dns/hostname" -v "${hostname}" ${OMV_CONFIG_FILE}
+omv_config_update "/config/services/smb/extraoptions" "$(echo -e "${smbOptions}")"
+omv_config_update "/config/services/ssh/enable" "1"
+omv_config_update "/config/services/ssh/permitrootlogin" "1"
+omv_config_update "/config/system/time/ntp/enable" "1"
+omv_config_update "/config/system/time/timezone" "${tz}"
+omv_config_update "/config/system/network/dns/hostname" "${hostname}"
 
 # disable monitoring and apply changes
 /usr/sbin/omv-rpc -u admin "perfstats" "set" '{"enable":false}'
