@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.1.5
+# version: 1.2.0
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -418,13 +418,6 @@ if [ ${version} -gt 4 ] && [ ${skipNet} -ne 1 ]; then
     ${rfkill} unblock all
   fi
 
-  # temporary change to support OMV 5.5.0
-  if grep -q 'vlan|wireless' ${OMV_CONFIG_FILE}; then
-    wifi="wireless"
-  else
-    wifi="wifi"
-  fi
-
   for nic in $(ls /sys/class/net | grep -vE "br-|docker|dummy|lo|tun|virbr"); do
     if grep -q "<devicename>${nic}</devicename>" ${OMV_CONFIG_FILE}; then
       echo "${nic} already found in database.  Skipping..."
@@ -443,7 +436,7 @@ if [ ${version} -gt 4 ] && [ ${skipNet} -ne 1 ]; then
           fi
           echo "Adding ${nic} to openmedivault database ..."
           jq --null-input --compact-output \
-            "{uuid: \"${OMV_CONFIGOBJECT_NEW_UUID}\", devicename: \"${nic}\", type: \"${wifi}\", method: \"dhcp\", method6: \"dhcp\", wpassid: \"${wifiName}\", wpapsk: \"${wifiPass}\"}" | \
+            "{uuid: \"${OMV_CONFIGOBJECT_NEW_UUID}\", devicename: \"${nic}\", type: \"wifi\", method: \"dhcp\", method6: \"dhcp\", wpassid: \"${wifiName}\", wpapsk: \"${wifiPass}\"}" | \
             omv-confdbadm update "conf.system.network.interface" -
           cfg=1
         fi
