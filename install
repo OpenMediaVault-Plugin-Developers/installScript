@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.2.0
+# version: 1.2.1
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -284,6 +284,7 @@ omv_config_update "/config/system/time/timezone" "${tz}"
 omv_config_update "/config/system/network/dns/hostname" "${hostname}"
 
 # disable monitoring and apply changes
+echo "Disabling data collection ..."
 /usr/sbin/omv-rpc -u admin "perfstats" "set" '{"enable":false}'
 /usr/sbin/omv-rpc -u admin "config" "applyChanges" '{ "modules": ["monit","rrdcached","collectd"],"force": true }'
 
