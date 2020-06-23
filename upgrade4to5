@@ -22,7 +22,14 @@ export LANG=C.UTF-8
 
 declare -i failed=0
 
+mkconf="/usr/sbin/omv-mkconf"
 plugins="cups dnsmasq docker-gui domoticz duplicati eyefi ldap letsencrypt mysql nginx openvpn pxe remotedesktop route shellinabox syncthing transmissionbt urbackup-server vdo virtualbox webdav netatalk route"
+
+if [ ! -f "${mkconf}" ]; then
+  echo "Creating omv-mkconf to help remove plugins"
+  echo "exit 0" > ${mkconf}
+  chmod +x ${mkconf}
+fi
 
 echo "Purging incompatible plugins ..."
 for plugin in ${plugins}; do
@@ -36,6 +43,10 @@ for plugin in ${plugins}; do
     fi
   fi
 done
+
+if [ -f "${mkconf}" ]; then
+  rm ${mkconf}
+fi
 
 if [ ${failed} -eq 1 ]; then
   echo "Failed to remove a plugin.  Exiting..."
