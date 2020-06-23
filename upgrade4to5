@@ -8,7 +8,7 @@
 # License version 2. This program is licensed "as is" without any
 # warranty of any kind, whether express or implied.
 #
-# version: 1.0.1
+# version: 1.1.0
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -20,13 +20,27 @@ export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
 export LANG=C.UTF-8
 
+declare -i failed=0
+
+plugins="cups dnsmasq docker-gui domoticz duplicati eyefi ldap letsencrypt mysql nginx openvpn pxe remotedesktop route shellinabox syncthing transmissionbt urbackup-server vdo virtualbox webdav netatalk route"
+
 echo "Purging incompatible plugins ..."
-apt-get purge openmediavault-cups openmediavault-dnsmasq openmediavault-docker-gui openmediavault-domoticz \
-  openmediavault-duplicati openmediavault-eyefi openmediavault-ldap openmediavault-letsencrypt openmediavault-mysql \
-  openmediavault-nginx openmediavault-openvpn openmediavault-pxe openmediavault-remotedesktop openmediavault-route \
-  openmediavault-shellinabox openmediavault-syncthing openmediavault-transmissionbt openmediavault-urbackup-server \
-  openmediavault-vdo openmediavault-virtualbox openmediavault-webdav \
-  openmediavault-netatalk openmediavault-route
+for plugin in ${plugins}; do
+  pkg="openmediavault-${plugin}"
+  if dpkg --list | grep --quiet "${pkg}"; then
+    if apt-get --yes purge ${pkg}; then
+      echo "Successfully removed '${pkg}'."
+    else
+      echo "Failed to remove '${pkg}'."
+      failed=1
+    fi
+  fi
+done
+
+if [ ${failed} -eq 1 ]; then
+  echo "Failed to remove a plugin.  Exiting..."
+  exit 1
+fi
 
 echo "Changing sources ..."
 sed -i "s/stretch/buster/g" /etc/apt/sources.list
