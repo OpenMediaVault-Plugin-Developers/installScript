@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.2.2
+# version: 1.2.3
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -144,11 +144,6 @@ apt-get --yes --no-install-recommends install dirmngr gnupg
 omvInstall=$(dpkg -l | awk '$2 == "openmediavault" { print $1 }')
 if [[ ! "${omvInstall}" == "ii" ]]; then
   echo "Installing openmediavault required packages..."
-  if ! apt-get --yes --no-install-recommends install monit; then
-    echo "failed installing monit"
-    exit 2
-  fi
-
   if ! apt-get --yes --no-install-recommends install postfix; then
     echo "failed installing postfix"
     exit 2
@@ -168,6 +163,11 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
   echo "Install openmediavault-keyring..."
   if ! apt-get --yes install openmediavault-keyring; then
     echo "failed to install openmediavault-keyring package."
+    exit 2
+  fi
+
+  if ! apt-get --yes --no-install-recommends install monit; then
+    echo "failed installing monit"
     exit 2
   fi
 
