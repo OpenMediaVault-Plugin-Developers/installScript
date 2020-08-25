@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.2.3
+# version: 1.2.4
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -135,6 +135,8 @@ if [[ "${distributor}" == "Raspbian" ]]; then
   for key in AA8E81B4331F7F50 112695A0E562B32A 04EE7237B7D453EC 648ACFD622F3D138; do
     apt-key adv --no-tty --keyserver ${keyserver} --recv-keys "${key}"
   done
+  echo "Installing monit from raspberrypi repo..."
+  apt-get --yes --no-install-recommends install -t buster monit
 fi
 
 echo "Install prerequisites..."
@@ -166,9 +168,12 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
     exit 2
   fi
 
-  if ! apt-get --yes --no-install-recommends install monit; then
-    echo "failed installing monit"
-    exit 2
+  monitInstall=$(dpkg -l | awk '$2 == "monit" { print $1 }')
+  if [[ ! "${monitInstall}" == "ii" ]]; then
+    if ! apt-get --yes --no-install-recommends install monit; then
+      echo "failed installing monit"
+      exit 2
+    fi
   fi
 
   echo "Installing openmediavault..."
