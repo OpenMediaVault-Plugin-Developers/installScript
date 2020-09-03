@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.2.5
+# version: 1.2.6
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -449,7 +449,9 @@ if [ ${version} -gt 4 ] && [ ${skipNet} -ne 1 ]; then
           jq --null-input --compact-output \
             "{uuid: \"${OMV_CONFIGOBJECT_NEW_UUID}\", devicename: \"${nic}\", type: \"wifi\", method: \"dhcp\", method6: \"dhcp\", wpassid: \"${wifiName}\", wpapsk: \"${wifiPass}\"}" | \
             omv-confdbadm update "conf.system.network.interface" -
-          cfg=1
+          if grep -q "<devicename>${nic}</devicename>" ${OMV_CONFIG_FILE}; then
+            cfg=1
+          fi
         fi
       fi
     else
@@ -457,7 +459,9 @@ if [ ${version} -gt 4 ] && [ ${skipNet} -ne 1 ]; then
       jq --null-input --compact-output \
         "{uuid: \"${OMV_CONFIGOBJECT_NEW_UUID}\", devicename: \"${nic}\", method: \"dhcp\", method6: \"dhcp\"}" | \
         omv-confdbadm update "conf.system.network.interface" -
-      cfg=1
+      if grep -q "<devicename>${nic}</devicename>" ${OMV_CONFIG_FILE}; then
+        cfg=1
+      fi
     fi
   done
 
