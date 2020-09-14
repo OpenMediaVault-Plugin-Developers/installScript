@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.2.6
+# version: 1.2.7
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -99,7 +99,6 @@ apt-get --yes --no-install-recommends --reinstall install lsb-release
 
 arch="$(dpkg --print-architecture)"
 codename="$(lsb_release --codename --short)"
-distributor="$(lsb_release --id --short)"
 
 case ${codename} in
   stretch)
@@ -130,13 +129,13 @@ tz=$(</etc/timezone)
 
 # Add Debian signing keys to raspbian to prevent apt-get update failures
 # when OMV adds security and/or backports repos
-if [[ "${distributor}" == "Raspbian" ]]; then
+if grep -q raspberrypi.org /etc/apt/sources.list.d/*; then
   echo "Adding Debian signing keys..."
   for key in AA8E81B4331F7F50 112695A0E562B32A 04EE7237B7D453EC 648ACFD622F3D138; do
     apt-key adv --no-tty --keyserver ${keyserver} --recv-keys "${key}"
   done
   echo "Installing monit from raspberrypi repo..."
-  apt-get --yes --no-install-recommends install -t buster monit
+  apt-get --yes --no-install-recommends install -t ${codename} monit
 fi
 
 echo "Install prerequisites..."
