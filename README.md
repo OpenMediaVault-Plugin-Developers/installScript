@@ -14,3 +14,9 @@
 
 ### a detailed guide is available for this script as well
 https://forum.openmediavault.org/index.php/Thread/28789-Installing-OMV5-on-Raspberry-PI-s-Armbian-SBC-s-i386-32-bit-platforms/
+
+
+### to skip network setup done by the script
+####wget https://github.com/OpenMediaVault-Plugin-Developers/installScript/raw/master/install
+####chmod +x install
+####sudo ./install -n
