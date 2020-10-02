@@ -17,6 +17,6 @@ https://forum.openmediavault.org/index.php/Thread/28789-Installing-OMV5-on-Raspb
 
 
 ### to skip network setup done by the script
-####wget https://github.com/OpenMediaVault-Plugin-Developers/installScript/raw/master/install
-####chmod +x install
-####sudo ./install -n
+#### wget https://github.com/OpenMediaVault-Plugin-Developers/installScript/raw/master/install
+#### chmod +x install
+#### sudo ./install -n
