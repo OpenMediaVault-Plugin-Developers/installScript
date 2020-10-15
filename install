@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.2.8
+# version: 1.2.9
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -28,17 +28,20 @@ if [ ! "${systemd}" = "systemd" ]; then
 fi
 
 declare -i cfg=0
-declare -l codename
-declare -l omvCodename
-declare -l omvInstall=""
-declare -l omvextrasInstall=""
+declare -i ipv6=0
 declare -i skipFlash=0
 declare -i skipNet=0
 declare -i version
 
+declare -l codename
+declare -l omvCodename
+declare -l omvInstall=""
+declare -l omvextrasInstall=""
+
 cpuFreqDef="/etc/default/cpufrequtils"
 crda="/etc/default/crda"
 defaultGovSearch="^CONFIG_CPU_FREQ_DEFAULT_GOV_"
+forceIpv4="/etc/apt/apt.conf.d/99force-ipv4"
 ioniceCron="/etc/cron.d/make_nas_processes_faster"
 ioniceScript="/usr/sbin/omv-ionice"
 keyserver="hkp://keyserver.ubuntu.com:80"
@@ -58,7 +61,7 @@ if [ -f /etc/armbian-release ]; then
   . /etc/armbian-release
 fi
 
-while getopts "fhn" opt; do
+while getopts "fhin" opt; do
   echo "option ${opt}"
   case "${opt}" in
     f)
@@ -68,6 +71,8 @@ while getopts "fhn" opt; do
       echo "Use the following flags:"
       echo "  -f"
       echo "    to skip the installation of the flashmemory plugin"
+      echo "  -i"
+      echo "    enable using IPv6 for apt"
       echo "  -n"
       echo "    to skip the network setup"
       echo ""
@@ -76,6 +81,9 @@ while getopts "fhn" opt; do
       echo "  install -f"
       echo "  install -n"
       exit 100
+      ;;
+    i)
+      ipv6=1
       ;;
     n)
       skipNet=1
@@ -90,6 +98,12 @@ done
 echo "Current / permissions = $(stat -c %a /)"
 chmod g-w,o-w /
 echo "New / permissions = $(stat -c %a /)"
+
+# if ipv6 is not enabled, create apt config file to force ipv4
+if [ ${ipv6} -ne 1 ]; then
+  echo "Forcing IPv4 only for apt..."
+  echo 'Acquire::ForceIPv4 "true";' > ${forceIpv4}
+fi
 
 echo "Updating repos before installing..."
 apt-get update
@@ -355,6 +369,10 @@ fi
 sessDir="/var/lib/php/sessions"
 if [ ! -d "${sessDir}" ]; then
   mkdir --parents --mode=1733 ${sessDir}
+fi
+
+if [ -f "${forceIpv4}" ]; then
+  rm ${forceIpv4}
 fi
 
 if [[ "${arch}" == "amd64" ]] || [[ "${arch}" == "i386" ]]; then
