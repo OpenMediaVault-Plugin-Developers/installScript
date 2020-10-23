@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.2.9
+# version: 1.2.10
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -373,6 +373,11 @@ fi
 
 if [ -f "${forceIpv4}" ]; then
   rm ${forceIpv4}
+fi
+
+if [ -f "/etc/init.d/proftpd" ]; then
+  systemctl disable proftpd.service
+  systemctl stop proftpd.service
 fi
 
 if [[ "${arch}" == "amd64" ]] || [[ "${arch}" == "i386" ]]; then
