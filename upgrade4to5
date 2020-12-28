@@ -89,7 +89,8 @@ echo "Updating base-files ..."
 apt-get --option DPkg::Options::="--force-confnew" install base-files
 
 echo "Running apt-get dist-upgrade ..."
-apt-get --option DPkg::Options::="--force-confdef" \
+apt-get --yes \
+        --option DPkg::Options::="--force-confdef" \
         --option DPkg::Options::="--force-confold" \
         dist-upgrade
 
