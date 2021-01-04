@@ -2,7 +2,7 @@
 #
 # shellcheck disable=SC1090,SC1091,SC1117,SC2016,SC2046,SC2086,SC2174
 #
-# Copyright (c) 2015-2020 OpenMediaVault Plugin Developers
+# Copyright (c) 2015-2021 OpenMediaVault Plugin Developers
 # Copyright (c) 2017-2020 Armbian Developers
 #
 # This file is licensed under the terms of the GNU General Public
@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.2.11
+# version: 1.2.12
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -112,6 +112,18 @@ echo "Installing lsb_release..."
 apt-get --yes --no-install-recommends --reinstall install lsb-release
 
 arch="$(dpkg --print-architecture)"
+
+# exit if not supported architecture
+case ${arch} in
+  arm64|armhf|amd64|i386)
+    echo "Supported architecture"
+    ;;
+  *)
+    echo "Unsupported architecture :: ${arch}"
+    exit 5
+    ;;
+esac
+
 codename="$(lsb_release --codename --short)"
 
 case ${codename} in
@@ -312,7 +324,7 @@ echo "Disabling data collection ..."
 /usr/sbin/omv-rpc -u admin "config" "applyChanges" '{ "modules": ["monit","rrdcached","collectd"],"force": true }'
 
 # set min/max frequency and watchdog for RPi boards
-if [[ $(awk '$1 == "Model" { print $3 }' /proc/cpuinfo) = "Raspberry" ]]; then
+if [[ $(awk '{ print $1 }' /proc/device-tree/model) = "Raspberry" ]]; then
   omv_set_default "OMV_WATCHDOG_DEFAULT_MODULE" "bcm2835_wdt"
   omv_set_default "OMV_WATCHDOG_CONF_WATCHDOG_TIMEOUT" "14"
 
