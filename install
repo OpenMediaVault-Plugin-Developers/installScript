@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.2.12
+# version: 1.2.13
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -51,6 +51,7 @@ omvSources="/etc/apt/sources.list.d/openmediavault.list"
 rfkill="/usr/sbin/rfkill"
 smbOptions="min receivefile size = 16384\nwrite cache size = 524288\ngetwd cache = yes\nsocket options = TCP_NODELAY IPTOS_LOWDELAY"
 url="https://github.com/OpenMediaVault-Plugin-Developers/packages/raw/master/"
+vsCodeList="/etc/apt/sources.list.d/vscode.list"
 wpaConf="/etc/wpa_supplicant/wpa_supplicant.conf"
 
 export DEBIAN_FRONTEND=noninteractive
@@ -103,6 +104,11 @@ echo "New / permissions = $(stat -c %a /)"
 if [ ${ipv6} -ne 1 ]; then
   echo "Forcing IPv4 only for apt..."
   echo 'Acquire::ForceIPv4 "true";' > ${forceIpv4}
+fi
+
+# remove vscode repo if found since there is no desktop environment
+if [ -f "${vsCodeList}" ]; then
+  rm "${vsCodeList}"
 fi
 
 echo "Updating repos before installing..."
