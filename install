@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.2.15
+# version: 1.3.0
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -129,14 +129,6 @@ esac
 codename="$(lsb_release --codename --short)"
 
 case ${codename} in
-  stretch)
-    confCmd="omv-mkconf"
-    network="interfaces"
-    ntp="ntp"
-    omvCodename="arrakis"
-    phpfpm="php-fpm"
-    version=4
-    ;;
   buster)
     confCmd="omv-salt deploy run"
     network="systemd-networkd"
