@@ -509,9 +509,22 @@ if [ ${version} -gt 4 ] && [ ${skipNet} -ne 1 ]; then
       fi
     else
       echo "Adding ${nic} to openmedivault database ..."
-      jq --null-input --compact-output \
+      if [ -n "$(ip -j -o -4 addr show ${nic} | jq --raw-output  '.[] | select(.addr_info[0].dev) | .addr_info[0].local')" ] && \
+      [ "$(ip -j -o -4 addr show ${nic} | jq --raw-output '.[] | select(.addr_info[0].dev) | .addr_info[0].dynamic')" == "null" ]; then
+        ipv4Addr=$(ip -j -o -4 addr show ${nic} | jq --raw-output '.[] | select(.addr_info[0].dev) | .addr_info[0].local')
+        ipv4CIDR=$(ip -j -o -4 addr show ${nic} | jq --raw-output '.[] | select(.addr_info[0].dev) | .addr_info[0].prefixlen')
+        bitmaskValue=$(( 0xffffffff ^ ((1 << (32 - ${ipv4CIDR})) - 1) ))
+        ipv4Netmask=$(( (${bitmaskValue} >> 24) & 0xff )).$(( (${bitmaskValue} >> 16) & 0xff )).$(( (${bitmaskValue} >> 8) & 0xff )).$(( ${bitmaskValue} & 0xff ))
+        ipv4GW=$(ip -j -o -4 route show | jq --raw-output '.[] | select(.dst=="default") | .gateway')
+        jq --null-input --compact-output \
+        "{uuid: \"${OMV_CONFIGOBJECT_NEW_UUID}\", devicename: \"${nic}\", method: \"static\", address: \"${ipv4Addr}\", netmask: \"${ipv4Netmask}\", gateway: \"${ipv4GW}\", dnsnameservers: \"8.8.8.8 ${ipv4GW}\"}" | \
+        omv-confdbadm update "conf.system.network.interface" -
+      else
+        jq --null-input --compact-output \
         "{uuid: \"${OMV_CONFIGOBJECT_NEW_UUID}\", devicename: \"${nic}\", method: \"dhcp\", method6: \"dhcp\"}" | \
         omv-confdbadm update "conf.system.network.interface" -
+      fi
+
       if grep -q "<devicename>${nic}</devicename>" ${OMV_CONFIG_FILE}; then
         cfg=1
       fi
