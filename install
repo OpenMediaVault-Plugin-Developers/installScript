@@ -31,6 +31,7 @@ declare -i cfg=0
 declare -i ipv6=0
 declare -i skipFlash=0
 declare -i skipNet=0
+declare -i isArmbian=0
 declare -i version
 
 declare -l codename
@@ -60,6 +61,7 @@ export LANG=C.UTF-8
 
 if [ -f /etc/armbian-release ]; then
   . /etc/armbian-release
+  isArmbian=1
 fi
 
 while getopts "fhin" opt; do
@@ -536,9 +538,12 @@ if [ ${version} -gt 4 ] && [ ${skipNet} -ne 1 ]; then
 
     # create config files
     ${confCmd} ${network}
+    echo "Network config files created."
 
-    echo "Network config files created.  Rebooting..."
-    reboot
+    if [ ${isArmbian} -ne 1 ]; then
+      echo "Rebooting..."
+      reboot
+    fi
   else
     echo "It is recommended to reboot and then setup the network adapter in the openmediavault web interface."
   fi
