@@ -537,7 +537,7 @@ if [ ${version} -gt 4 ] && [ ${skipNet} -ne 1 ]; then
     # create config files
     ${confCmd} ${network}
 
-    echo "Network setup for DHCP.  Rebooting..."
+    echo "Network config files created.  Rebooting..."
     reboot
   else
     echo "It is recommended to reboot and then setup the network adapter in the openmediavault web interface."
