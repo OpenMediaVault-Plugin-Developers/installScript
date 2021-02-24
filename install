@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# shellcheck disable=SC1090,SC1091,SC1117,SC2016,SC2046,SC2086,SC2174
+# shellcheck disable=SC1090,SC1091,SC1117,SC2010,SC2016,SC2046,SC2086,SC2174
 #
 # Copyright (c) 2015-2021 OpenMediaVault Plugin Developers
 # Copyright (c) 2017-2020 Armbian Developers
@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.3.0
+# version: 1.3.1
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -31,6 +31,7 @@ declare -i cfg=0
 declare -i ipv6=0
 declare -i skipFlash=0
 declare -i skipNet=0
+declare -i skipReboot=0
 declare -i version
 
 declare -l codename
@@ -62,7 +63,7 @@ if [ -f /etc/armbian-release ]; then
   . /etc/armbian-release
 fi
 
-while getopts "fhin" opt; do
+while getopts "fhinr" opt; do
   echo "option ${opt}"
   case "${opt}" in
     f)
@@ -76,6 +77,8 @@ while getopts "fhin" opt; do
       echo "    enable using IPv6 for apt"
       echo "  -n"
       echo "    to skip the network setup"
+      echo "  -r"
+      echo "    to skip reboot"
       echo ""
       echo "Examples:"
       echo "  install"
@@ -88,6 +91,9 @@ while getopts "fhin" opt; do
       ;;
     n)
       skipNet=1
+      ;;
+    r)
+      skipReboot=1
       ;;
     \?)
       echo "Invalid option: -${OPTARG}"
@@ -479,7 +485,7 @@ if [ ${version} -gt 4 ] && [ ${skipNet} -ne 1 ]; then
       echo "${nic} already found in database.  Skipping..."
       continue
     fi
-
+    nettype="dhcp"
     if udevadm info /sys/class/net/${nic} | grep -q wlan; then
       if [ -f "${wpaConf}" ]; then
         country=$(awk -F'=' '/country=/{gsub(/["\r]/,""); print $NF}' ${wpaConf})
@@ -505,12 +511,13 @@ if [ ${version} -gt 4 ] && [ ${skipNet} -ne 1 ]; then
       [ "$(ip -j -o -4 addr show ${nic} | jq --raw-output '.[] | select(.addr_info[0].dev) | .addr_info[0].dynamic')" == "null" ]; then
         ipv4Addr=$(ip -j -o -4 addr show ${nic} | jq --raw-output '.[] | select(.addr_info[0].dev) | .addr_info[0].local')
         ipv4CIDR=$(ip -j -o -4 addr show ${nic} | jq --raw-output '.[] | select(.addr_info[0].dev) | .addr_info[0].prefixlen')
-        bitmaskValue=$(( 0xffffffff ^ ((1 << (32 - ${ipv4CIDR})) - 1) ))
-        ipv4Netmask=$(( (${bitmaskValue} >> 24) & 0xff )).$(( (${bitmaskValue} >> 16) & 0xff )).$(( (${bitmaskValue} >> 8) & 0xff )).$(( ${bitmaskValue} & 0xff ))
+        bitmaskValue=$(( 0xffffffff ^ ((1 << (32 - ipv4CIDR)) - 1) ))
+        ipv4Netmask=$(( (bitmaskValue >> 24) & 0xff )).$(( (bitmaskValue >> 16) & 0xff )).$(( (bitmaskValue >> 8) & 0xff )).$(( bitmaskValue & 0xff ))
         ipv4GW=$(ip -j -o -4 route show | jq --raw-output '.[] | select(.dst=="default") | .gateway')
         jq --null-input --compact-output \
         "{uuid: \"${OMV_CONFIGOBJECT_NEW_UUID}\", devicename: \"${nic}\", method: \"static\", address: \"${ipv4Addr}\", netmask: \"${ipv4Netmask}\", gateway: \"${ipv4GW}\", dnsnameservers: \"8.8.8.8 ${ipv4GW}\"}" | \
         omv-confdbadm update "conf.system.network.interface" -
+        nettype="static"
       else
         jq --null-input --compact-output \
         "{uuid: \"${OMV_CONFIGOBJECT_NEW_UUID}\", devicename: \"${nic}\", method: \"dhcp\", method6: \"dhcp\"}" | \
@@ -529,8 +536,10 @@ if [ ${version} -gt 4 ] && [ ${skipNet} -ne 1 ]; then
     # create config files
     ${confCmd} ${network}
 
-    echo "Network setup for DHCP.  Rebooting..."
-    reboot
+    if [ ${skipReboot} -ne 1 ]; then
+      echo "Network setup for ${nettype}.  Rebooting..."
+      reboot
+    fi
   else
     echo "It is recommended to reboot and then setup the network adapter in the openmediavault web interface."
   fi
