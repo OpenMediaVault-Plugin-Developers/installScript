@@ -328,7 +328,8 @@ echo "Disabling data collection ..."
 /usr/sbin/omv-rpc -u admin "config" "applyChanges" '{ "modules": ["monit","rrdcached","collectd"],"force": true }'
 
 # set min/max frequency and watchdog for RPi boards
-if [[ $(awk '{ print $1 }' /proc/device-tree/model) = "Raspberry" ]]; then
+rpi_model="/proc/device-tree/model"
+if [ -f "${rpi_model}" ] && [[ $(awk '{ print $1 }' ${rpi_model}) = "Raspberry" ]]; then
   omv_set_default "OMV_WATCHDOG_DEFAULT_MODULE" "bcm2835_wdt"
   omv_set_default "OMV_WATCHDOG_CONF_WATCHDOG_TIMEOUT" "14"
 
