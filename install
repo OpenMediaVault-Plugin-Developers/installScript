@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.3.1
+# version: 1.3.2
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -533,7 +533,10 @@ if [ ${version} -gt 4 ] && [ ${skipNet} -ne 1 ]; then
     echo "IP address may change and you could lose connection if running this script via ssh."
 
     # create config files
-    ${confCmd} ${network}
+    if ! ${confCmd} ${network}; then
+      echo "Error applying network changes.  Skipping reboot!"
+      skipReboot=1
+    fi
 
     if [ ${skipReboot} -ne 1 ]; then
       echo "Network setup.  Rebooting..."
