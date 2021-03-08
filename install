@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.3.2
+# version: 1.3.3
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -150,8 +150,15 @@ case ${codename} in
 esac
 echo "${omvCodename} :: ${version}"
 
-hostname=$(</etc/hostname)
-tz=$(</etc/timezone)
+hostname="$(hostname --short)"
+domainname="$(hostname --domain)"
+tz="$(timedatectl show --property=Timezone --value)"
+
+regex='[a-zA-Z]([-a-zA-Z0-9]{0,61}[a-zA-Z0-9])'
+if [[ ! ${hostname} =~ ${regex} ]]; then
+    echo "Invalid hostname.  Exiting..."
+    exit 6
+fi
 
 # Add Debian signing keys to raspbian to prevent apt-get update failures
 # when OMV adds security and/or backports repos
@@ -321,6 +328,9 @@ omv_config_update "/config/services/ssh/permitrootlogin" "1"
 omv_config_update "/config/system/time/ntp/enable" "1"
 omv_config_update "/config/system/time/timezone" "${tz}"
 omv_config_update "/config/system/network/dns/hostname" "${hostname}"
+if [ -n "${domainname}" ]; then
+  omv_config_update "/config/system/network/dns/domainname" "${domainname}"
+fi
 
 # disable monitoring and apply changes
 echo "Disabling data collection ..."
