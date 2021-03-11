@@ -144,7 +144,7 @@ case ${codename} in
     version=5
     ;;
   *)
-    echo "Unsupported version.  Exiting..."
+    echo "Unsupported version.  Only Debian 10 (Buster) is supported.  Exiting..."
     exit 1
   ;;
 esac
