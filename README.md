@@ -13,8 +13,10 @@
 #### sudo curl -sSL https://github.com/OpenMediaVault-Plugin-Developers/installScript/raw/master/install | sudo bash
 
 ### a detailed guide is available for this script as well
-https://forum.openmediavault.org/index.php/Thread/28789-Installing-OMV5-on-Raspberry-PI-s-Armbian-SBC-s-i386-32-bit-platforms/
+https://openmediavault.readthedocs.io/en/5.x/new_user_guide/newuserguide.html
 
+### get help for this script in the forum
+https://forum.openmediavault.org/
 
 ### to skip network setup done by the script
 - wget https://github.com/OpenMediaVault-Plugin-Developers/installScript/raw/master/install
