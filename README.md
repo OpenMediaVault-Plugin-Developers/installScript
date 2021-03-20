@@ -1,24 +1,39 @@
 ### installScript
-- please use a new SD card if installing on an arm/sbc device.
-- will install openmediavault, omv-extras, and flashmemory
+- Please use a new SD card if installing on an arm/sbc device.
+- This script will install openmediavault, omv-extras, and flashmemory. If you already have openmediavault installed installed don't worry, your openmediavault will be preserved, only the not installed will be anded to the system.
 
-### install the script's prerequisites
-#### apt-get install wget sudo
+### Installation 
+To install OMV, OMV-Extras and Flashmemory copy and paste this line in the Terminal and press Enter. The installation will take some time, so enjoy the text flying on the screen. 
 
-### download script and execute
-- the wget option -O needs to be a capital letter 'O'
-- the second wget '-' has a space on both sides
-#### sudo wget -O - https://github.com/OpenMediaVault-Plugin-Developers/installScript/raw/master/install | sudo bash
-#### -OR-
-#### sudo curl -sSL https://github.com/OpenMediaVault-Plugin-Developers/installScript/raw/master/install | sudo bash
+***The installation process demands sudo utilization.***
 
-### a detailed guide is available for this script as well
-https://openmediavault.readthedocs.io/en/5.x/new_user_guide/newuserguide.html
+To download and execute the script you can use either *wget* or *curl*, feel free to use what you prefer!
 
-### get help for this script in the forum
-https://forum.openmediavault.org/
+*wget script*
+####  
+```bash
+sudo wget -O - https://github.com/OpenMediaVault-Plugin-Developers/installScript/raw/master/install | sudo bash
+```
 
-### to skip network setup done by the script
-- wget https://github.com/OpenMediaVault-Plugin-Developers/installScript/raw/master/install
-- chmod +x install
-- sudo ./install -n
+*curl script*
+```bash
+sudo curl -sSL https://github.com/OpenMediaVault-Plugin-Developers/installScript/raw/master/install | sudo bash
+```
+### To skip network setup
+If you don't wanna use the network setup steps of the script, please use copy and paste the followings lines to the terminal. 
+```bash
+wget https://github.com/OpenMediaVault-Plugin-Developers/installScript/raw/master/install
+chmod +x install
+sudo ./install -n
+```
+
+### A detailed guide is available for this script as well
+openmediavault is primarily designed to be used in home environments or small home offices, but is not limited to those scenarios. It is a simple and easy to use out-of-the-box solution that everyone can install and administer without needing expert level knowledge of Networking and Storage Systems.
+
+The openmediavault documentation can be accessed in https://openmediavault.readthedocs.io/en/5.x/new_user_guide/newuserguide.html
+
+And for the OMV-Extras visit https://wiki.omv-extras.org/
+ 
+### Get help for this script in the forum
+If you got stuck in any part of this script the openmediavault forum will be the place to find a solution https://forum.openmediavault.org/
+
