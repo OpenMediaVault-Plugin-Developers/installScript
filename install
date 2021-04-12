@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.3.7
+# version: 1.3.8
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -249,7 +249,7 @@ if [ "${codename}" = "eoan" ]; then
 fi
 
 if [ ${rpi} -eq 1 ]; then
-  omv_set_default "OMV_APT_USE_OS_SECURITY" "1"
+  omv_set_default "OMV_APT_USE_OS_SECURITY" false true
 fi
 
 # install omv-extras
