@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.3.5
+# version: 1.3.6
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -29,6 +29,7 @@ fi
 
 declare -i cfg=0
 declare -i ipv6=0
+declare -i rpi=0
 declare -i skipFlash=0
 declare -i skipNet=0
 declare -i skipReboot=0
@@ -163,6 +164,7 @@ fi
 # Add Debian signing keys to raspbian to prevent apt-get update failures
 # when OMV adds security and/or backports repos
 if grep -rq raspberrypi.org /etc/apt/*; then
+  rpi=1
   echo "Adding Debian signing keys..."
   for key in AA8E81B4331F7F50 112695A0E562B32A 04EE7237B7D453EC 648ACFD622F3D138; do
     apt-key adv --no-tty --keyserver ${keyserver} --recv-keys "${key}"
@@ -244,6 +246,10 @@ sed -i "/\(stretch\|buster\)-backports/d" /etc/apt/sources.list
 
 if [ "${codename}" = "eoan" ]; then
   omv_set_default "OMV_APT_USE_KERNEL_BACKPORTS" false true
+fi
+
+if [ ${rpi} -eq 1 ]; then
+  omv_set_default "OMV_IS_RPI" "1"
 fi
 
 # install omv-extras
@@ -342,7 +348,6 @@ rpi_model="/proc/device-tree/model"
 if [ -f "${rpi_model}" ] && [[ $(awk '{ print $1 }' ${rpi_model}) = "Raspberry" ]]; then
   omv_set_default "OMV_WATCHDOG_DEFAULT_MODULE" "bcm2835_wdt"
   omv_set_default "OMV_WATCHDOG_CONF_WATCHDOG_TIMEOUT" "14"
-  omv_set_default "OMV_IS_RPI" "1"
 
   MIN_SPEED="$(</sys/devices/system/cpu/cpufreq/policy0/cpuinfo_min_freq)"
   MAX_SPEED="$(</sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq)"
