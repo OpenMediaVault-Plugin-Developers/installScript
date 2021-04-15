@@ -1,6 +1,6 @@
 ### installScript
 - Please use a new SD card if installing on an arm/sbc device.
-- This script will install openmediavault, omv-extras, and flashmemory. If you already have openmediavault installed installed don't worry, your openmediavault will be preserved, only the not installed will be anded to the system.
+- This script will install openmediavault, omv-extras, and flashmemory. If you already have openmediavault installed don't worry, your openmediavault will be preserved, only the not installed will be added to the system.
 
 ### Installation 
 To install OMV, OMV-Extras and Flashmemory copy and paste this line in the Terminal and press Enter. The installation will take some time, so enjoy the text flying on the screen. 
