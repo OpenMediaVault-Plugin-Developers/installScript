@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.4.0
+# version: 1.5.0
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -40,6 +40,7 @@ declare -l omvCodename
 declare -l omvInstall=""
 declare -l omvextrasInstall=""
 
+confCmd="omv-salt deploy run"
 cpuFreqDef="/etc/default/cpufrequtils"
 crda="/etc/default/crda"
 defaultGovSearch="^CONFIG_CPU_FREQ_DEFAULT_GOV_"
@@ -137,15 +138,15 @@ codename="$(lsb_release --codename --short)"
 
 case ${codename} in
   buster)
-    confCmd="omv-salt deploy run"
-    network="systemd-networkd"
-    ntp="chrony"
     omvCodename="usul"
-    phpfpm="phpfpm"
     version=5
     ;;
+  bullseye)
+    omvCodename="shaitan"
+    version=6
+    ;;
   *)
-    echo "Unsupported version.  Only Debian 10 (Buster) is supported.  Exiting..."
+    echo "Unsupported version.  Only Debian 10 (Buster) and 11 (Bullseye) are supported.  Exiting..."
     exit 1
   ;;
 esac
@@ -382,7 +383,7 @@ omv_set_default "OMV_CPUFREQUTILS_MAXSPEED" "${MAX_SPEED}"
 omv-salt stage run prepare
 
 # update config files
-${confCmd} nginx ${phpfpm} samba flashmemory ssh ${ntp} timezone monit rrdcached collectd cpufrequtils apt watchdog
+${confCmd} nginx phpfpm samba flashmemory ssh chrony timezone monit rrdcached collectd cpufrequtils apt watchdog
 
 # create php directories if they don't exist
 modDir="/var/lib/php/modules"
@@ -539,7 +540,7 @@ if [ ${skipNet} -ne 1 ]; then
     echo "IP address may change and you could lose connection if running this script via ssh."
 
     # create config files
-    if ! ${confCmd} ${network}; then
+    if ! ${confCmd} systemd-networkd; then
       echo "Error applying network changes.  Skipping reboot!"
       skipReboot=1
     fi
