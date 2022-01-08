@@ -27,14 +27,6 @@ if [ ! "${systemd}" = "systemd" ]; then
   exit 100
 fi
 
-if dpkg -l | grep -Eqw "gdm3|sddm|lxdm|xdm|lightdm|slim|wdm"; then
-  echo "This system is running a desktop environment!"
-  echo "Please use a Lite version of the image or"
-  echo "do not choose to install a desktop environment."
-  echo "This install is not supported.  Exiting..."
-  exit 101
-fi
-
 declare -i cfg=0
 declare -i ipv6=0
 declare -i rpi=0
