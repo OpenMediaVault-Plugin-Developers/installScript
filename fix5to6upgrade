@@ -1,0 +1,70 @@
+#!/bin/bash
+#
+# shellcheck disable=SC1090,SC1091,SC1117,SC2016,SC2046,SC2086
+#
+# version: 0.0.1
+#
+
+if [[ $(id -u) -ne 0 ]]; then
+  echo "This script must be executed as root or using sudo."
+  exit 99
+fi
+
+export DEBIAN_FRONTEND=noninteractive
+export APT_LISTCHANGES_FRONTEND=none
+export LANG=C.UTF-8
+
+echo "Removing old sources ..."
+rm -f /etc/apt/sources.list.d/omvextras.list /etc/apt/sources.list.d/omv-extras-org.list
+
+echo "Clearing cache ..."
+/usr/bin/salt-call --local saltutil.clear_cache
+omv-salt stage run prepare
+
+echo "Rebuilding sources.list* ..."
+omv-salt deploy run apt omvextras
+
+echo "Change to bullseye and shaitan just in case ..."
+sed -i "s/buster/bullseye/g" /etc/apt/sources.list
+sed -i "s/buster/bullseye/g" /etc/apt/sources.list.d/*
+sed -i "s/usul/shaitan/g" /etc/apt/sources.list.d/*
+
+if [ -f /etc/apt/apt.conf ]; then
+  echo "Changing apt.conf ..."
+  sed -i "s/buster/bullseye/g" /etc/apt/apt.conf
+fi
+
+armbian="/etc/apt/sources.list.d/armbian.list"
+if [ -f "${armbian}" ]; then
+  echo "Fixing Armbian repo ..."
+  echo "deb http://apt.armbian.com bullseye main bullseye-utils" | sudo tee ${armbian}
+fi
+
+echo "Running apt-get update ..."
+apt-get update
+
+echo "Running apt-get dist-upgrade ..."
+apt-get --yes \
+        --option DPkg::Options::="--force-confdef" \
+        --option DPkg::Options::="--force-confold" \
+        dist-upgrade
+
+echo "Enable cron-apt ..."
+rm -f /etc/cron-apt/refrain
+
+echo "Enable apt index ..."
+cp /usr/sbin/omv-mkaptidx /root/
+rm -f /usr/sbin/omv-mkaptidx
+dpkg-divert --remove --rename /usr/sbin/omv-mkaptidx
+
+echo "Rebuild apt index ..."
+omv-mkaptidx
+
+echo "Rebuild OMV pam config ..."
+dpkg-divert --remove --rename /etc/pam.d/openmediavault
+dpkg-divert --remove --rename /etc/pam.d/openmediavault-common-auth
+dpkg-divert --remove --rename /etc/pam.d/openmediavault-webgui
+
+echo "Done."
+
+exit 0
