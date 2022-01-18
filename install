@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.3
+# version: 1.6.4
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -188,11 +188,6 @@ if grep -rq raspberrypi.org /etc/apt/*; then
   # remove vscode repo if found since there is no desktop environment
   # empty file will exist to keep raspberrypi-sys-mods package from adding it back
   truncate -s 0 "${vsCodeList}"
-
-  if [ ${version} -eq 6 ]; then
-    echo "OMV 6.x on Raspberry Pi is temporarily broken.  The fix is being worked on."
-    exit 123
-  fi
 fi
 
 echo "Install prerequisites..."
@@ -234,7 +229,7 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
 
   echo "Installing openmediavault..."
   aptFlags="--yes --auto-remove --show-upgraded --allow-downgrades --allow-change-held-packages --no-install-recommends"
-  cmd="apt-get ${aptFlags} install openmediavault${over}"
+  cmd="apt-get ${aptFlags} install openmediavault"
   if ! ${cmd}; then
     echo "failed to install openmediavault package."
     exit 2
@@ -358,8 +353,12 @@ echo "Disabling data collection ..."
 # set min/max frequency and watchdog for RPi boards
 rpi_model="/proc/device-tree/model"
 if [ -f "${rpi_model}" ] && [[ $(awk '{ print $1 }' ${rpi_model}) = "Raspberry" ]]; then
-  omv_set_default "OMV_WATCHDOG_DEFAULT_MODULE" "bcm2835_wdt"
-  omv_set_default "OMV_WATCHDOG_CONF_WATCHDOG_TIMEOUT" "14"
+  if [ ${version} -ge 6 ]; then
+    omv_set_default "OMV_WATCHDOG_SYSTEMD_RUNTIMEWATCHDOGSEC" 14 true
+  else
+    omv_set_default "OMV_WATCHDOG_DEFAULT_MODULE" "bcm2835_wdt"
+    omv_set_default "OMV_WATCHDOG_CONF_WATCHDOG_TIMEOUT" "14"
+  fi
 
   MIN_SPEED="$(</sys/devices/system/cpu/cpufreq/policy0/cpuinfo_min_freq)"
   MAX_SPEED="$(</sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq)"
