@@ -2,7 +2,7 @@
 #
 # shellcheck disable=SC1090,SC1091,SC1117,SC2010,SC2016,SC2046,SC2086,SC2174
 #
-# Copyright (c) 2015-2021 OpenMediaVault Plugin Developers
+# Copyright (c) 2015-2022 OpenMediaVault Plugin Developers
 # Copyright (c) 2017-2020 Armbian Developers
 #
 # This file is licensed under the terms of the GNU General Public
@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.1
+# version: 1.6.3
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -146,11 +146,13 @@ codename="$(lsb_release --codename --short)"
 
 case ${codename} in
   buster)
+    keys="648ACFD622F3D138 112695A0E562B32A"
     omvCodename="usul"
     version=5
     smbOptions="${smbOptions}\nwrite cache size = 524288"
     ;;
   bullseye)
+    keys="0E98404D386FA1D9 A48449044AAD5C5D"
     omvCodename="shaitan"
     version=6
     ;;
@@ -172,12 +174,14 @@ if [[ ! ${hostname} =~ ${regex} ]]; then
     exit 6
 fi
 
+over=""
+
 # Add Debian signing keys to raspbian to prevent apt-get update failures
 # when OMV adds security and/or backports repos
 if grep -rq raspberrypi.org /etc/apt/*; then
   rpi=1
   echo "Adding Debian signing keys..."
-  for key in AA8E81B4331F7F50 112695A0E562B32A 04EE7237B7D453EC 648ACFD622F3D138; do
+  for key in ${keys}; do
     apt-key adv --no-tty --keyserver ${keyserver} --recv-keys "${key}"
   done
   echo "Installing monit from raspberrypi repo..."
@@ -186,6 +190,10 @@ if grep -rq raspberrypi.org /etc/apt/*; then
   # remove vscode repo if found since there is no desktop environment
   # empty file will exist to keep raspberrypi-sys-mods package from adding it back
   truncate -s 0 "${vsCodeList}"
+
+  if [ ${version} -eq 6 ]; then
+    over="=6.0.8"
+  fi
 fi
 
 echo "Install prerequisites..."
@@ -227,7 +235,7 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
 
   echo "Installing openmediavault..."
   aptFlags="--yes --auto-remove --show-upgraded --allow-downgrades --allow-change-held-packages --no-install-recommends"
-  cmd="apt-get ${aptFlags} install openmediavault"
+  cmd="apt-get ${aptFlags} install openmediavault${over}"
   if ! ${cmd}; then
     echo "failed to install openmediavault package."
     exit 2
