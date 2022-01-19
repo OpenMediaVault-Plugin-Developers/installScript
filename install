@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.4
+# version: 1.6.5
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -188,6 +188,11 @@ if grep -rq raspberrypi.org /etc/apt/*; then
   # remove vscode repo if found since there is no desktop environment
   # empty file will exist to keep raspberrypi-sys-mods package from adding it back
   truncate -s 0 "${vsCodeList}"
+
+  if [ ${version} -gt 5 ]; then
+    echo "OMV 6.x on RPi is waiting for a fix.  Exiting..."
+    exit 123
+  fi
 fi
 
 echo "Install prerequisites..."
@@ -353,9 +358,7 @@ echo "Disabling data collection ..."
 # set min/max frequency and watchdog for RPi boards
 rpi_model="/proc/device-tree/model"
 if [ -f "${rpi_model}" ] && [[ $(awk '{ print $1 }' ${rpi_model}) = "Raspberry" ]]; then
-  if [ ${version} -ge 6 ]; then
-    omv_set_default "OMV_WATCHDOG_SYSTEMD_RUNTIMEWATCHDOGSEC" 14 true
-  else
+  if [ ${version} -lt 6 ]; then
     omv_set_default "OMV_WATCHDOG_DEFAULT_MODULE" "bcm2835_wdt"
     omv_set_default "OMV_WATCHDOG_CONF_WATCHDOG_TIMEOUT" "14"
   fi
