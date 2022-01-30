@@ -17,6 +17,9 @@ export LANG=C.UTF-8
 echo "Removing old sources ..."
 rm -f /etc/apt/sources.list.d/omvextras.list /etc/apt/sources.list.d/omv-extras-org.list
 
+xmlstarlet ed --inplace -u /config/system/omvextras/extras -v 0 /etc/openmediavault/config.xml
+xmlstarlet ed --inplace -u /config/system/omvextras/testing -v 0 /etc/openmediavault/config.xml
+
 echo "Clearing cache ..."
 /usr/bin/salt-call --local saltutil.clear_cache
 omv-salt stage run prepare
