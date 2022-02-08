@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.8
+# version: 1.6.9
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -94,6 +94,12 @@ while getopts "fhinr" opt; do
       echo "  install"
       echo "  install -f"
       echo "  install -n"
+      echo ""
+      echo "Notes:"
+      echo "  This script will always install:"
+      echo "    - OMV 5.x on Debian 10 (Buster)"
+      echo "    - OMV 6.x on Debian 11 (Bullseye)"
+      echo ""
       exit 100
       ;;
     i)
@@ -189,6 +195,8 @@ if grep -rq raspberrypi.org /etc/apt/*; then
   # empty file will exist to keep raspberrypi-sys-mods package from adding it back
   truncate -s 0 "${vsCodeList}"
 fi
+
+dpkg -P udisks2
 
 echo "Install prerequisites..."
 apt-get --yes --no-install-recommends install dirmngr gnupg

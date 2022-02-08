@@ -3,6 +3,11 @@
 - This script will install openmediavault, omv-extras, and flashmemory. If you already have openmediavault installed don't worry, your openmediavault will be preserved, only the not installed will be added to the system.
 - Installing OMV with a desktop environment is NOT supported.  Please read the forum for the many reasons why.
 
+### Notes
+- This script will always install
+  - OMV 5.x on Debian 10 (Buster)
+  - OMV 6.x on Debian 11 (Bullseye)
+
 ### Installation 
 To install OMV, OMV-Extras and Flashmemory copy and paste this line in the Terminal and press Enter. The installation will take some time, so enjoy the text flying on the screen. 
 
