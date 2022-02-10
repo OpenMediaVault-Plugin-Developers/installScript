@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.9
+# version: 1.6.10
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -183,6 +183,12 @@ fi
 # Add Debian signing keys to raspbian to prevent apt-get update failures
 # when OMV adds security and/or backports repos
 if grep -rq raspberrypi.org /etc/apt/*; then
+  rpivers="$(awk '$1 == "Revision" { print $3 }' /proc/cpuinfo)"
+  echo "RPi revision code :: ${rpivers}"
+  if [[ "${rpivers:0:1}" =~ [0-9] ]]; then
+    echo "This RPi1 is not supported (not true armhf).  Exiting..."
+    exit 7
+  fi
   rpi=1
   echo "Adding Debian signing keys..."
   for key in ${keys}; do
