@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.11
+# version: 1.6.12
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -185,7 +185,7 @@ fi
 if grep -rq raspberrypi.org /etc/apt/*; then
   rpivers="$(awk '$1 == "Revision" { print $3 }' /proc/cpuinfo)"
   echo "RPi revision code :: ${rpivers}"
-  if [[ "${rpivers:0:1}" =~ [09] ]]; then
+  if [[ "${rpivers:0:1}" =~ [09] ]] && [[ ! "${rpivers:0:3}" =~ 902 ]]; then
     echo "This RPi1 is not supported (not true armhf).  Exiting..."
     exit 7
   fi
