@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.12
+# version: 1.6.13
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -129,6 +129,11 @@ if [ ${ipv6} -ne 1 ]; then
 fi
 
 
+if [ -f "/usr/libexec/config-rtl8367rb.sh" ]; then
+  echo "Skipping network because swconfig controlled switch found."
+  skipNet=1
+fi
+
 echo "Updating repos before installing..."
 apt-get --allow-releaseinfo-change update
 
@@ -214,7 +219,11 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
   echo "Installing openmediavault required packages..."
   if ! apt-get --yes --no-install-recommends install postfix; then
     echo "failed installing postfix"
-    exit 2
+    sed -i '/^myhostname/d' /etc/postfix/main.cf
+    if ! apt-get --yes --fix-broken install; then
+      echo "failed installing postfix and unable to fix"
+      exit 2
+    fi
   fi
 
   echo "Adding openmediavault repo and key..."
