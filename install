@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.14
+# version: 1.6.15
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -446,6 +446,11 @@ fi
 if [ -f "/etc/init.d/proftpd" ]; then
   systemctl disable proftpd.service
   systemctl stop proftpd.service
+fi
+
+# add admin user to openmediavault-admin group if it exists
+if getent passwd admin > /dev/null; then
+  usermod -a -G openmediavault-admin admin
 fi
 
 if [[ "${arch}" == "amd64" ]] || [[ "${arch}" == "i386" ]]; then
