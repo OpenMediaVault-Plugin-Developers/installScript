@@ -185,11 +185,6 @@ if [[ ! ${hostname} =~ ${regex} ]]; then
     exit 6
 fi
 
-# install usrmerge package if /usr symlink don't exist
-if [ "$(readlink -f /lib)" != "/usr/lib" ]; then
-  apt-get --yes install usrmerge
-fi
-
 # Add Debian signing keys to raspbian to prevent apt-get update failures
 # when OMV adds security and/or backports repos
 if grep -rq raspberrypi.org /etc/apt/*; then
