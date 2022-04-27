@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.15
+# version: 1.6.16
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -31,7 +31,9 @@ if dpkg -l | grep -Eqw "gdm3|sddm|lxdm|xdm|lightdm|slim|wdm"; then
   echo "This system is running a desktop environment!"
   echo "Please use a Lite version of the image or"
   echo "do not choose to install a desktop environment."
-  echo "This install is not supported.  Exiting..."
+  echo "This install is not supported."
+  echo "Search the forum for more info - https://forum.openmediavault.org"
+  echo "Exiting..."
   exit 101
 fi
 
