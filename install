@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.17
+# version: 1.6.18
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -278,7 +278,9 @@ fi
 sed -i "/\(stretch\|buster\)-backports/d" /etc/apt/sources.list
 
 if [ ${rpi} -eq 1 ]; then
-  omv_set_default "OMV_APT_USE_OS_SECURITY" false true
+  if [ ! "${arch}" = "arm64" ]; then
+    omv_set_default "OMV_APT_USE_OS_SECURITY" false true
+  fi
   omv_set_default "OMV_APT_USE_KERNEL_BACKPORTS" false true
 fi
 
