@@ -99,7 +99,7 @@ while getopts "fhinr" opt; do
       echo ""
       echo "Notes:"
       echo "  This script will always install:"
-      echo "    - OMV 5.x on Debian 10 (Buster)"
+      echo "    - OMV 5.x on Debian 10 (Buster) EOL"
       echo "    - OMV 6.x on Debian 11 (Bullseye)"
       echo ""
       exit 100
@@ -163,6 +163,7 @@ case ${codename} in
     omvCodename="usul"
     version=5
     smbOptions="${smbOptions}\nwrite cache size = 524288"
+    echo "This version of OMV is End of Life.  Please consider using OMV 6.x."
     ;;
   bullseye)
     keys="0E98404D386FA1D9 A48449044AAD5C5D"
