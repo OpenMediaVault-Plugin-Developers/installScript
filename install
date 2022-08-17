@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.18
+# version: 1.6.19
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -500,10 +500,10 @@ if getent passwd pi > /dev/null; then
 fi
 
 # add user running the script to ssh group if not pi or root
-if [ -n "${USER}" ] && [ ! "${USER}" = "root" ] && [ ! "${USER}" = "pi" ]; then
-  if getent passwd ${USER} > /dev/null; then
-    echo "Adding ${USER} to the ssh group ..."
-    usermod -a -G ssh ${USER}
+if [ -n "${SUDO_USER}" ] && [ ! "${SUDO_USER}" = "root" ] && [ ! "${SUDO_USER}" = "pi" ]; then
+  if getent passwd ${SUDO_USER} > /dev/null; then
+    echo "Adding ${SUDO_USER} to the ssh group ..."
+    usermod -a -G ssh ${SUDO_USER}
   fi
 fi
 
