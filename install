@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.21
+# version: 1.6.22
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -518,6 +518,13 @@ if [ ${skipNet} -ne 1 ]; then
   defLink="/etc/systemd/network/99-default.link"
   if [ -e "${defLink}" ]; then
     rm -fv "${defLink}"
+  fi
+
+  # remove armbian netplan file if found
+  anp="/etc/netplan/armbian-default.yaml"
+  if [ -e "${anp}" ]; then
+    echo "Removing Armbian netplan file..."
+    rm -fv "${anp}"
   fi
 
   echo "Removing network-manager and dhcpcd5 ..."
