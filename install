@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.23
+# version: 1.6.24
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -541,7 +541,7 @@ if [ ${skipNet} -ne 1 ]; then
     ${rfkill} unblock all
   fi
 
-  for nic in $(ls /sys/class/net | grep -vE "br-|docker|dummy|lo|tun|veth|virbr|wg"); do
+  for nic in $(ls /sys/class/net | grep -vE "br-|docker|dummy|ip6|lo|sit|tun|veth|virbr|wg"); do
     if grep -q "<devicename>${nic}</devicename>" ${OMV_CONFIG_FILE}; then
       echo "${nic} already found in database.  Skipping..."
       continue
