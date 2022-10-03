@@ -1,5 +1,5 @@
 ### installScript
-- Please use a new SD card if installing on an arm/sbc device.
+- Please use a new SD card if installing on an arm/sbc device and flash it with the latest Debian OS Lite (without desktop environment) or Server image available for your SBC.
 - This script will install openmediavault, omv-extras, and flashmemory. If you already have openmediavault installed don't worry, your openmediavault will be preserved, only the not installed will be added to the system.
 - Installing OMV with a desktop environment is NOT supported.  Please read the forum for the many reasons why.
 - This script may alter previous network setups.  This has a greater chance of breaking wifi setup.  Please read the install manual for more help - https://wiki.omv-extras.org/
