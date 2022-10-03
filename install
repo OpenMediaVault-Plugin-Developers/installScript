@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.24
+# version: 1.6.25
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -209,6 +209,13 @@ if grep -rq raspberrypi.org /etc/apt/*; then
   # remove vscode repo if found since there is no desktop environment
   # empty file will exist to keep raspberrypi-sys-mods package from adding it back
   truncate -s 0 "${vsCodeList}"
+fi
+
+# remove armbian netplan file if found
+anp="/etc/netplan/armbian-default.yaml"
+if [ -e "${anp}" ]; then
+  echo "Removing Armbian netplan file..."
+  rm -fv "${anp}"
 fi
 
 dpkg -P udisks2
@@ -518,13 +525,6 @@ if [ ${skipNet} -ne 1 ]; then
   defLink="/etc/systemd/network/99-default.link"
   if [ -e "${defLink}" ]; then
     rm -fv "${defLink}"
-  fi
-
-  # remove armbian netplan file if found
-  anp="/etc/netplan/armbian-default.yaml"
-  if [ -e "${anp}" ]; then
-    echo "Removing Armbian netplan file..."
-    rm -fv "${anp}"
   fi
 
   echo "Removing network-manager and dhcpcd5 ..."
