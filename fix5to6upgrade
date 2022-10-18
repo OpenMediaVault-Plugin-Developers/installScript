@@ -2,7 +2,7 @@
 #
 # shellcheck disable=SC1090,SC1091,SC1117,SC2016,SC2046,SC2086
 #
-# version: 0.0.2
+# version: 0.0.3
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -40,7 +40,13 @@ fi
 armbian="/etc/apt/sources.list.d/armbian.list"
 if [ -f "${armbian}" ]; then
   echo "Fixing Armbian repo ..."
-  echo "deb http://apt.armbian.com bullseye main bullseye-utils" | sudo tee ${armbian}
+  echo "deb http://apt.armbian.com bullseye main bullseye-utils" | tee ${armbian}
+fi
+
+security="/etc/apt/sources.list.d/openmediavault-os-security.list"
+if [ -f "${security}" ]; then
+  echo "Fixing Debian security repo ..."
+  echo "deb http://security.debian.org/debian-security bullseye-security main contrib non-free" | tee ${security}
 fi
 
 echo "Running apt-get update ..."
