@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.26
+# version: 1.6.27
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -223,7 +223,9 @@ dpkg -P udisks2
 echo "Install prerequisites..."
 apt-get --yes --no-install-recommends install dirmngr gnupg
 
-systemctl unmask systemd-networkd.service
+if [ -f /etc/armbian-release ]; then
+  systemctl unmask systemd-networkd.service
+fi
 
 # install openmediavault if not installed already
 omvInstall=$(dpkg -l | awk '$2 == "openmediavault" { print $1 }')
