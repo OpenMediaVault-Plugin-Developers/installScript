@@ -37,6 +37,15 @@ if dpkg -l | grep -Eqw "gdm3|sddm|lxdm|xdm|lightdm|slim|wdm"; then
   exit 101
 fi
 
+if [ ! -L "/sbin" -o ! -L "/bin" ]; then
+  echo "The /usr directories seem not to be migrated. Please check the"
+  echo "following pages for more information:"
+  echo "- https://wiki.debian.org/UsrMerge"
+  echo "- https://www.freedesktop.org/wiki/Software/systemd/TheCaseForTheUsrMerge"
+  echo "Exiting..."
+  exit 102
+fi
+
 declare -i cfg=0
 declare -i ipv6=0
 declare -i rpi=0
