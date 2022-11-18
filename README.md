@@ -38,6 +38,7 @@ sudo ./install -n
 openmediavault is primarily designed to be used in home environments or small home offices, but is not limited to those scenarios. It is a simple and easy to use out-of-the-box solution that everyone can install and administer without needing expert level knowledge of Networking and Storage Systems.
 
 For the OMV-Extras documentation, visit https://wiki.omv-extras.org/
+
 For the new user guide, visit https://wiki.omv-extras.org/doku.php?id=omv6:new_user_guide
  
 ### Get help for this script in the forum
