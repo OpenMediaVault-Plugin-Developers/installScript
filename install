@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.27
+# version: 1.6.28
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -37,7 +37,7 @@ if dpkg -l | grep -Eqw "gdm3|sddm|lxdm|xdm|lightdm|slim|wdm"; then
   exit 101
 fi
 
-if [ ! -L "/sbin" -o ! -L "/bin" ]; then
+if [ ! -L "/sbin" ] || [ ! -L "/bin" ]; then
   echo "The /usr directories seem not to be migrated. Please check the"
   echo "following pages for more information:"
   echo "- https://wiki.debian.org/UsrMerge"
@@ -230,7 +230,7 @@ fi
 dpkg -P udisks2
 
 echo "Install prerequisites..."
-apt-get --yes --no-install-recommends install dirmngr gnupg
+apt-get --yes --no-install-recommends install dirmngr gnupg wget
 
 if [ -f /etc/armbian-release ]; then
   systemctl unmask systemd-networkd.service
