@@ -2,7 +2,7 @@
 #
 # shellcheck disable=SC1090,SC1091,SC1117,SC2010,SC2016,SC2046,SC2086,SC2174
 #
-# Copyright (c) 2015-2022 OpenMediaVault Plugin Developers
+# Copyright (c) 2015-2023 OpenMediaVault Plugin Developers
 # Copyright (c) 2017-2020 Armbian Developers
 #
 # This file is licensed under the terms of the GNU General Public
@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.28
+# version: 1.6.29
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -338,7 +338,7 @@ if [ -f "${file}" ]; then
   fi
 
   echo "Updating repos ..."
-  apt-get update
+  omv-salt deploy run omvextras
 else
   echo "There was a problem downloading the package."
 fi
