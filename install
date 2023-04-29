@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.29
+# version: 1.6.30
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -67,7 +67,7 @@ forceIpv4="/etc/apt/apt.conf.d/99force-ipv4"
 ioniceCron="/etc/cron.d/make_nas_processes_faster"
 ioniceScript="/usr/sbin/omv-ionice"
 keyserver="hkp://keyserver.ubuntu.com:80"
-omvKey="/etc/apt/trusted.gpg.d/openmediavault-archive-keyring.asc"
+omvKey="/etc/apt/trusted.gpg.d/openmediavault-archive-keyring.gpg"
 omvRepo="http://packages.openmediavault.org/public"
 omvSources="/etc/apt/sources.list.d/openmediavault.list"
 rfkill="/usr/sbin/rfkill"
@@ -253,8 +253,7 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
 
   echo "Adding openmediavault repo and key..."
   echo "deb ${omvRepo} ${omvCodename} main" > ${omvSources}
-  wget -O "${omvKey}" ${omvRepo}/archive.key
-  apt-key add "${omvKey}"
+  wget --quiet --output-document=- "${omvRepo}/archive.key" | gpg --dearmor > "${omvKey}"
 
   echo "Updating repos..."
   if ! apt-get update; then
