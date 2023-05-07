@@ -153,6 +153,9 @@ apt-get --allow-releaseinfo-change update
 echo "Installing lsb_release..."
 apt-get --yes --no-install-recommends --reinstall install lsb-release
 
+echo "Installing apparmor-utils..."
+apt-get --yes --no-install-recommends install apparmor apparmor-utils
+
 arch="$(dpkg --print-architecture)"
 
 # exit if not supported architecture
