@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.30
+# version: 1.6.31
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -59,6 +59,7 @@ declare -l omvCodename
 declare -l omvInstall=""
 declare -l omvextrasInstall=""
 
+aptclean="/usr/sbin/omv-aptclean"
 confCmd="omv-salt deploy run"
 cpuFreqDef="/etc/default/cpufrequtils"
 crda="/etc/default/crda"
@@ -232,7 +233,7 @@ fi
 dpkg -P udisks2
 
 echo "Install prerequisites..."
-apt-get --yes --no-install-recommends install dirmngr gnupg wget
+apt-get --yes --no-install-recommends install gnupg wget
 
 if [ -f /etc/armbian-release ]; then
   systemctl unmask systemd-networkd.service
@@ -320,12 +321,9 @@ if [ -f "${file}" ]; then
     apt-get --yes --fix-broken install
     omvextrasInstall=$(dpkg -l | awk '$2 == "openmediavault-omvextrasorg" { print $1 }')
     if [[ ! "${omvextrasInstall}" == "ii" ]]; then
-      echo "omv-extras failed to install correctly.  Trying to fix with ${confCmd} ..."
-      if ${confCmd} omvextras; then
-        echo "Trying to fix apt ..."
-        apt-get --yes --fix-broken install
-      else
-        echo "${confCmd} failed and openmediavault-omvextrasorg is in a bad state."
+      echo "omv-extras failed to install correctly.  Trying to fix apt ..."
+      if ! apt-get --yes --fix-broken install; then
+        echo "Fix failed and openmediavault-omvextrasorg is in a bad state."
         exit 3
       fi
     fi
@@ -337,7 +335,7 @@ if [ -f "${file}" ]; then
   fi
 
   echo "Updating repos ..."
-  omv-salt deploy run omvextras
+  ${aptclean} repos
 else
   echo "There was a problem downloading the package."
 fi
