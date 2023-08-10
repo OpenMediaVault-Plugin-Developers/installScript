@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.31
+# version: 1.6.32
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -298,7 +298,7 @@ fi
 . /usr/share/openmediavault/scripts/helper-functions
 
 # remove backports from sources.list to avoid duplicate sources warning
-sed -i "/\(stretch\|buster\)-backports/d" /etc/apt/sources.list
+sed -i "/\(stretch\|buster\|bullseye\)-backports/d" /etc/apt/sources.list
 
 if [ ${rpi} -eq 1 ]; then
   if [ ! "${arch}" = "arm64" ]; then
