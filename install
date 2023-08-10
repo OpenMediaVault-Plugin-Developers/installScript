@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.32
+# version: 1.6.33
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -486,7 +486,7 @@ systemctl restart rsyslog
 
 # add taskset to ionice cronjob for biglittle boards
 case ${BOARD} in
-  odroidxu4|bananapim3|nanopifire3|nanopct3plus|nanopim3)
+  odroidxu4|bananapim3|nanopifire3|nanopct3plus|nanopim3|nanopi-r6s)
     taskset='; taskset -c -p 4-7 ${srv}'
     ;;
   *rk3399*|*edge*|nanopct4|nanopim4|nanopineo4|renegade-elite|rockpi-4*|rockpro64|helios64)
