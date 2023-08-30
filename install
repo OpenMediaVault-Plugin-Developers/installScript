@@ -13,7 +13,7 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.33
+# version: 1.6.34
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -72,7 +72,7 @@ omvKey="/etc/apt/trusted.gpg.d/openmediavault-archive-keyring.gpg"
 omvRepo="http://packages.openmediavault.org/public"
 omvSources="/etc/apt/sources.list.d/openmediavault.list"
 rfkill="/usr/sbin/rfkill"
-smbOptions="min receivefile size = 16384\ngetwd cache = yes"
+smbOptions=""
 url="https://github.com/OpenMediaVault-Plugin-Developers/packages/raw/master"
 vsCodeList="/etc/apt/sources.list.d/vscode.list"
 wpaConf="/etc/wpa_supplicant/wpa_supplicant.conf"
@@ -380,7 +380,9 @@ else
 fi
 
 # change default OMV settings
-omv_config_update "/config/services/smb/extraoptions" "$(echo -e "${smbOptions}")"
+if [ -n "${smbOptions}" ]; then
+  omv_config_update "/config/services/smb/extraoptions" "$(echo -e "${smbOptions}")"
+fi
 omv_config_update "/config/services/ssh/enable" "1"
 omv_config_update "/config/services/ssh/permitrootlogin" "1"
 omv_config_update "/config/system/time/ntp/enable" "1"
