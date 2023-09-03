@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# shellcheck disable=SC1090,SC1091,SC1117,SC2010,SC2016,SC2046,SC2086,SC2174
+# shellcheck disable=SC1090,SC1091,SC2010,SC2016,SC2046,SC2086,SC2174,SC2181
 #
 # Copyright (c) 2015-2023 OpenMediaVault Plugin Developers
 # Copyright (c) 2017-2020 Armbian Developers
@@ -13,8 +13,18 @@
 # https://github.com/armbian/config/blob/master/debian-software
 # https://forum.openmediavault.org/index.php/Thread/25062-Install-OMV5-on-Debian-10-Buster/
 #
-# version: 1.6.34
-#
+
+logfile="omv_install.log"
+version="2.0.0"
+
+
+_log()
+{
+  msg=${1}
+  echo "[$(date +'%Y-%m-%d %H:%M:%S%z')] [omvinstall] ${msg}" | tee -a ${logfile}
+}
+
+_log "version :: ${version}"
 
 if [[ $(id -u) -ne 0 ]]; then
   echo "This script must be executed as root or using sudo."
@@ -46,6 +56,7 @@ if [ ! -L "/sbin" ] || [ ! -L "/bin" ]; then
   exit 102
 fi
 
+declare -i armbian=0
 declare -i cfg=0
 declare -i ipv6=0
 declare -i rpi=0
@@ -58,6 +69,10 @@ declare -l codename
 declare -l omvCodename
 declare -l omvInstall=""
 declare -l omvextrasInstall=""
+
+declare gov=""
+declare minspd=""
+declare maxspd=""
 
 aptclean="/usr/sbin/omv-aptclean"
 confCmd="omv-salt deploy run"
@@ -85,10 +100,12 @@ export LC_ALL=C.UTF-8
 
 if [ -f /etc/armbian-release ]; then
   . /etc/armbian-release
+  armbian=1
+  _log "Armbian"
 fi
 
 while getopts "fhinr" opt; do
-  echo "option ${opt}"
+  _log "option ${opt}"
   case "${opt}" in
     f)
       skipFlash=1
@@ -126,48 +143,52 @@ while getopts "fhinr" opt; do
       skipReboot=1
       ;;
     \?)
-      echo "Invalid option: -${OPTARG}"
+      _log "Invalid option: -${OPTARG}"
       ;;
   esac
 done
 
+_log "Starting ..."
+
 # Fix permissions on / if wrong
-echo "Current / permissions = $(stat -c %a /)"
-chmod g-w,o-w /
-echo "New / permissions = $(stat -c %a /)"
+_log "Current / permissions = $(stat -c %a /)"
+chmod -v g-w,o-w / 2>&1 | tee -a ${logfile}
+_log "New / permissions = $(stat -c %a /)"
 
 # if ipv6 is not enabled, create apt config file to force ipv4
 if [ ${ipv6} -ne 1 ]; then
-  echo "Forcing IPv4 only for apt..."
+  _log "Forcing IPv4 only for apt..."
   echo 'Acquire::ForceIPv4 "true";' > ${forceIpv4}
 fi
 
 
 if [ -f "/usr/libexec/config-rtl8367rb.sh" ]; then
-  echo "Skipping network because swconfig controlled switch found."
+  _log "Skipping network because swconfig controlled switch found."
   skipNet=1
 fi
 
-echo "Updating repos before installing..."
-apt-get --allow-releaseinfo-change update
+_log "Updating repos before installing..."
+apt-get --allow-releaseinfo-change update 2>&1 | tee -a ${logfile}
 
-echo "Installing lsb_release..."
-apt-get --yes --no-install-recommends --reinstall install lsb-release
+_log "Installing lsb_release..."
+apt-get --yes --no-install-recommends --reinstall install lsb-release 2>&1 | tee -a ${logfile}
 
 arch="$(dpkg --print-architecture)"
+_log "Arch :: ${arch}"
 
 # exit if not supported architecture
 case ${arch} in
   arm64|armhf|amd64|i386)
-    echo "Supported architecture"
+    _log "Supported architecture"
     ;;
   *)
-    echo "Unsupported architecture :: ${arch}"
+    _log "Unsupported architecture :: ${arch}"
     exit 5
     ;;
 esac
 
 codename="$(lsb_release --codename --short)"
+_log "Codename :: ${codename}"
 
 case ${codename} in
   buster)
@@ -175,7 +196,7 @@ case ${codename} in
     omvCodename="usul"
     version=5
     smbOptions="${smbOptions}\nwrite cache size = 524288"
-    echo "This version of OMV is End of Life.  Please consider using OMV 6.x."
+    _log "This version of OMV is End of Life.  Please consider using OMV 6.x."
     ;;
   bullseye)
     keys="0E98404D386FA1D9 A48449044AAD5C5D"
@@ -183,20 +204,23 @@ case ${codename} in
     version=6
     ;;
   *)
-    echo "Unsupported version.  Only Debian 10 (Buster) and 11 (Bullseye) are supported.  Exiting..."
+    _log "Unsupported version.  Only Debian 10 (Buster) and 11 (Bullseye) are supported.  Exiting..."
     exit 1
   ;;
 esac
-echo "Debian :: ${codename}"
-echo "${omvCodename} :: ${version}"
+_log "Debian :: ${codename}"
+_log "${omvCodename} :: ${version}"
 
 hostname="$(hostname --short)"
+_log "Hostname :: ${hostname}"
 domainname="$(hostname --domain)"
+_log "Domain name :: ${domainname}"
 tz="$(timedatectl show --property=Timezone --value)"
+_log "timezone :: ${tz}"
 
 regex='[a-zA-Z]([-a-zA-Z0-9]{0,61}[a-zA-Z0-9])'
 if [[ ! ${hostname} =~ ${regex} ]]; then
-    echo "Invalid hostname.  Exiting..."
+    _log "Invalid hostname.  Exiting..."
     exit 6
 fi
 
@@ -204,19 +228,19 @@ fi
 # when OMV adds security and/or backports repos
 if grep -rq raspberrypi.org /etc/apt/*; then
   rpivers="$(awk '$1 == "Revision" { print $3 }' /proc/cpuinfo)"
-  echo "RPi revision code :: ${rpivers}"
+  _log "RPi revision code :: ${rpivers}"
   # https://elinux.org/RPi_HardwareHistory
   if [[ "${rpivers:0:1}" =~ [09] ]] && [[ ! "${rpivers:0:3}" =~ 902 ]]; then
-    echo "This RPi1 is not supported (not true armhf).  Exiting..."
+    _log "This RPi1 is not supported (not true armhf).  Exiting..."
     exit 7
   fi
   rpi=1
-  echo "Adding Debian signing keys..."
+  _log "Adding Debian signing keys..."
   for key in ${keys}; do
-    apt-key adv --no-tty --keyserver ${keyserver} --recv-keys "${key}"
+    apt-key adv --no-tty --keyserver ${keyserver} --recv-keys "${key}" 2>&1 | tee -a ${logfile}
   done
-  echo "Installing monit from raspberrypi repo..."
-  apt-get --yes --no-install-recommends install -t ${codename} monit
+  _log "Installing monit from raspberrypi repo..."
+  apt-get --yes --no-install-recommends install -t ${codename} monit 2>&1 | tee -a ${logfile}
 
   # remove vscode repo if found since there is no desktop environment
   # empty file will exist to keep raspberrypi-sys-mods package from adding it back
@@ -226,71 +250,83 @@ fi
 # remove armbian netplan file if found
 anp="/etc/netplan/armbian-default.yaml"
 if [ -e "${anp}" ]; then
-  echo "Removing Armbian netplan file..."
+  _log "Removing Armbian netplan file..."
   rm -fv "${anp}"
 fi
 
-dpkg -P udisks2
+dpkg -P udisks2 2>&1 | tee -a ${logfile}
 
-echo "Install prerequisites..."
-apt-get --yes --no-install-recommends install gnupg wget
+_log "Install prerequisites..."
+apt-get --yes --no-install-recommends install gnupg wget 2>&1 | tee -a ${logfile}
 
-if [ -f /etc/armbian-release ]; then
-  systemctl unmask systemd-networkd.service
+if [ ${armbian} -eq 1 ]; then
+  systemctl unmask systemd-networkd.service 2>&1 | tee -a ${logfile}
+  # save off cpuFreq settings before installing the openmediavault
+  if [ -f "${cpuFreqDef}" ]; then
+    . ${cpuFreqDef}
+    gov="${GOVERNOR}"
+    minspd="${MIN_SPEED}"
+    maxspd="${MAX_SPEED}"
+  fi
 fi
 
 # install openmediavault if not installed already
 omvInstall=$(dpkg -l | awk '$2 == "openmediavault" { print $1 }')
 if [[ ! "${omvInstall}" == "ii" ]]; then
-  echo "Installing openmediavault required packages..."
-  if ! apt-get --yes --no-install-recommends install postfix; then
-    echo "failed installing postfix"
+  _log "Installing openmediavault required packages..."
+  apt-get --yes --no-install-recommends install postfix 2>&1 | tee -a ${logfile}
+  if [ $? -gt 0 ]; then
+    _log "failed installing postfix"
     sed -i '/^myhostname/d' /etc/postfix/main.cf
-    if ! apt-get --yes --fix-broken install; then
-      echo "failed installing postfix and unable to fix"
+    apt-get --yes --fix-broken install 2>&1 | tee -a ${logfile}
+    if [ $? -gt 0 ]; then
+      _log "failed installing postfix and unable to fix"
       exit 2
     fi
   fi
 
-  echo "Adding openmediavault repo and key..."
-  echo "deb ${omvRepo} ${omvCodename} main" > ${omvSources}
+  _log "Adding openmediavault repo and key..."
+  echo "deb ${omvRepo} ${omvCodename} main" | tee ${omvSources}
   wget --quiet --output-document=- "${omvRepo}/archive.key" | gpg --dearmor > "${omvKey}"
 
-  echo "Updating repos..."
-  if ! apt-get update; then
-    echo "failed to update apt repos."
+  _log "Updating repos..."
+  apt-get update 2>&1 | tee -a ${logfile}
+  if [ $? -gt 0 ]; then
+    _log "failed to update apt repos."
     exit 2
   fi
 
-  echo "Install openmediavault-keyring..."
-  if ! apt-get --yes install openmediavault-keyring; then
-    echo "failed to install openmediavault-keyring package."
+  _log "Install openmediavault-keyring..."
+  apt-get --yes install openmediavault-keyring 2>&1 | tee -a ${logfile}
+  if [ $? -gt 0 ]; then
+    _log "failed to install openmediavault-keyring package."
     exit 2
   fi
 
   monitInstall=$(dpkg -l | awk '$2 == "monit" { print $1 }')
   if [[ ! "${monitInstall}" == "ii" ]]; then
-    if ! apt-get --yes --no-install-recommends install monit; then
-      echo "failed installing monit"
+    apt-get --yes --no-install-recommends install monit 2>&1 | tee -a ${logfile}
+    if [ $? -gt 0 ]; then
+      _log "failed installing monit"
       exit 2
     fi
   fi
 
-  echo "Installing openmediavault..."
+  _log "Installing openmediavault..."
   aptFlags="--yes --auto-remove --show-upgraded --allow-downgrades --allow-change-held-packages --no-install-recommends"
-  cmd="apt-get ${aptFlags} install openmediavault"
-  if ! ${cmd}; then
-    echo "failed to install openmediavault package."
+  apt-get ${aptFlags} install openmediavault 2>&1 | tee -a ${logfile}
+  if [ $? -gt 0 ]; then
+    _log "failed to install openmediavault package."
     exit 2
   fi
 
-  omv-confdbadm populate
+  omv-confdbadm populate 2>&1 | tee -a ${logfile}
 fi
 
 # check if openmediavault is install properly
 omvInstall=$(dpkg -l | awk '$2 == "openmediavault" { print $1 }')
 if [[ ! "${omvInstall}" == "ii" ]]; then
-  echo "openmediavault package failed to install or is in a bad state."
+  _log "openmediavault package failed to install or is in a bad state."
   exit 3
 fi
 
@@ -308,7 +344,7 @@ if [ ${rpi} -eq 1 ]; then
 fi
 
 # install omv-extras
-echo "Downloading omv-extras.org plugin for openmediavault ${version}.x ..."
+_log "Downloading omv-extras.org plugin for openmediavault ${version}.x ..."
 file="openmediavault-omvextrasorg_latest_all${version}.deb"
 
 if [ -f "${file}" ]; then
@@ -317,34 +353,35 @@ fi
 wget ${url}/${file}
 if [ -f "${file}" ]; then
   if ! dpkg --install ${file}; then
-    echo "Installing other dependencies ..."
-    apt-get --yes --fix-broken install
+    _log "Installing other dependencies ..."
+    apt-get --yes --fix-broken install 2>&1 | tee -a ${logfile}
     omvextrasInstall=$(dpkg -l | awk '$2 == "openmediavault-omvextrasorg" { print $1 }')
     if [[ ! "${omvextrasInstall}" == "ii" ]]; then
-      echo "omv-extras failed to install correctly.  Trying to fix apt ..."
-      if ! apt-get --yes --fix-broken install; then
-        echo "Fix failed and openmediavault-omvextrasorg is in a bad state."
+      _log "omv-extras failed to install correctly.  Trying to fix apt ..."
+      apt-get --yes --fix-broken install 2>&1 | tee -a ${logfile}
+      if [ $? -gt 0 ]; then
+        _log "Fix failed and openmediavault-omvextrasorg is in a bad state."
         exit 3
       fi
     fi
     omvextrasInstall=$(dpkg -l | awk '$2 == "openmediavault-omvextrasorg" { print $1 }')
     if [[ ! "${omvextrasInstall}" == "ii" ]]; then
-      echo "openmediavault-omvextrasorg package failed to install or is in a bad state."
+      _log "openmediavault-omvextrasorg package failed to install or is in a bad state."
       exit 3
     fi
   fi
 
-  echo "Updating repos ..."
-  ${aptclean} repos
+  _log "Updating repos ..."
+  ${aptclean} repos 2>&1 | tee -a ${logfile}
 else
-  echo "There was a problem downloading the package."
+  _log "There was a problem downloading the package."
 fi
 
 # disable armbian log services if found
 for service in log2ram armbian-ramlog armbian-zram-config; do
   if systemctl list-units --full -all | grep ${service}; then
-    systemctl stop ${service}
-    systemctl disable ${service}
+    systemctl stop ${service} 2>&1 | tee -a ${logfile}
+    systemctl disable ${service} 2>&1 | tee -a ${logfile}
   fi
 done
 rm -f /etc/cron.daily/armbian-ram-logging
@@ -361,21 +398,23 @@ fi
 
 # install flashmemory plugin unless disabled
 if [ ${skipFlash} -eq 1 ]; then
-  echo "Skipping installation of the flashmemory plugin."
+  _log "Skipping installation of the flashmemory plugin."
 else
-  echo "Install folder2ram..."
-  if apt-get --yes --fix-missing --no-install-recommends install folder2ram; then
-    echo "Installed folder2ram."
+  _log "Install folder2ram..."
+  apt-get --yes --fix-missing --no-install-recommends install folder2ram 2>&1 | tee -a ${logfile}
+  if [ $? -gt 0 ]; then
+    _log "Installed folder2ram."
   else
-    echo "Failed to install folder2ram."
+    _log "Failed to install folder2ram."
   fi
-  echo "Install flashmemory plugin..."
-  if apt-get --yes install openmediavault-flashmemory; then
-    echo "Installed flashmemory plugin."
+  _log "Install flashmemory plugin..."
+  apt-get --yes install openmediavault-flashmemory 2>&1 | tee -a ${logfile}
+  if [ $? -gt 0 ]; then
+    _log "Installed flashmemory plugin."
   else
-    echo "Failed to install flashmemory plugin."
-    ${confCmd} flashmemory
-    apt-get --yes --fix-broken install
+    _log "Failed to install flashmemory plugin."
+    ${confCmd} flashmemory 2>&1 | tee -a ${logfile}
+    apt-get --yes --fix-broken install 2>&1 | tee -a ${logfile}
   fi
 fi
 
@@ -393,9 +432,9 @@ if [ -n "${domainname}" ]; then
 fi
 
 # disable monitoring and apply changes
-echo "Disabling data collection ..."
-/usr/sbin/omv-rpc -u admin "perfstats" "set" '{"enable":false}'
-/usr/sbin/omv-rpc -u admin "config" "applyChanges" '{ "modules": ["monit","rrdcached","collectd"],"force": true }'
+_log "Disabling data collection ..."
+/usr/sbin/omv-rpc -u admin "perfstats" "set" '{"enable":false}' 2>&1 | tee -a ${logfile}
+/usr/sbin/omv-rpc -u admin "config" "applyChanges" '{ "modules": ["monit","rrdcached","collectd"],"force": true }' 2>&1 | tee -a ${logfile}
 
 # set min/max frequency and watchdog for RPi boards
 rpi_model="/proc/device-tree/model"
@@ -413,21 +452,35 @@ if [ -f "${rpi_model}" ] && [[ $(awk '{ print $1 }' ${rpi_model}) = "Raspberry" 
     BOARD="rpi4"
   fi
   cat << EOF > ${cpuFreqDef}
-GOVERNOR="ondemand"
+GOVERNOR="schedutil"
 MIN_SPEED="${MIN_SPEED}"
 MAX_SPEED="${MAX_SPEED}"
 EOF
 fi
 
-if [ -f "${cpuFreqDef}" ]; then
+# get default governor for kernel
+if [ -f "/proc/config.gz" ]; then
+  defaultGov="$(zgrep "${defaultGovSearch}" /proc/config.gz | sed -e "s/${defaultGovSearch}\(.*\)=y/\1/")"
+elif [ -f "/boot/config-$(uname -r)" ]; then
+  defaultGov="$(grep "${defaultGovSearch}" /boot/config-$(uname -r) | sed -e "s/${defaultGovSearch}\(.*\)=y/\1/")"
+fi
+
+# governor and speed variables
+if [ ${armbian} -eq 1 ]; then
+  if [ -n "${defaultGov}" ]; then
+    GOVERNOR="${defaultGov,,}"
+  elif [ -n "${gov}" ]; then
+    GOVERNOR="${gov}"
+  fi
+  if [ -n "${minspd}" ]; then
+    MIN_SPEED="${minspd}"
+  fi
+  if [ -n "${maxspd}" ]; then
+    MAX_SPEED="${maxspd}"
+  fi
+elif [ -f "${cpuFreqDef}" ]; then
   . ${cpuFreqDef}
 else
-  # set cpufreq settings if no defaults
-  if [ -f "/proc/config.gz" ]; then
-    defaultGov="$(zgrep "${defaultGovSearch}" /proc/config.gz | sed -e "s/${defaultGovSearch}\(.*\)=y/\1/")"
-  elif [ -f "/boot/config-$(uname -r)" ]; then
-    defaultGov="$(grep "${defaultGovSearch}" /boot/config-$(uname -r) | sed -e "s/${defaultGovSearch}\(.*\)=y/\1/")"
-  fi
   if [ -z "${DEFAULT_GOV}" ]; then
     defaultGov="ondemand"
   fi
@@ -442,10 +495,10 @@ omv_set_default "OMV_CPUFREQUTILS_MINSPEED" "${MIN_SPEED}"
 omv_set_default "OMV_CPUFREQUTILS_MAXSPEED" "${MAX_SPEED}"
 
 # update pillar default list - /srv/pillar/omv/default.sls
-omv-salt stage run prepare
+omv-salt stage run prepare 2>&1 | tee -a ${logfile}
 
 # update config files
-${confCmd} nginx phpfpm samba flashmemory ssh chrony timezone monit rrdcached collectd cpufrequtils apt watchdog
+${confCmd} nginx phpfpm samba flashmemory ssh chrony timezone monit rrdcached collectd cpufrequtils apt watchdog 2>&1 | tee -a ${logfile}
 
 # create php directories if they don't exist
 modDir="/var/lib/php/modules"
@@ -468,63 +521,65 @@ fi
 
 # add admin user to openmediavault-admin group if it exists
 if getent passwd admin > /dev/null; then
-  usermod -a -G openmediavault-admin admin
+  usermod -a -G openmediavault-admin admin 2>&1 | tee -a ${logfile}
 fi
 
 if [[ "${arch}" == "amd64" ]] || [[ "${arch}" == "i386" ]]; then
   # skip ionice on x86 boards
-  echo "Done."
+  _log "Done."
   exit 0
 fi
 
-# Add a cron job to make NAS processes more snappy and silence rsyslog
-cat << EOF > /etc/rsyslog.d/omv-armbian.conf
+if [ ! "${GOVERNOR,,}" = "schedutil" ]; then
+  _log "Add a cron job to make NAS processes more snappy and silence rsyslog"
+  cat << EOF > /etc/rsyslog.d/omv-armbian.conf
 :msg, contains, "omv-ionice" ~
 :msg, contains, "action " ~
 :msg, contains, "netsnmp_assert" ~
 :msg, contains, "Failed to initiate sched scan" ~
 EOF
-systemctl restart rsyslog
+  systemctl restart rsyslog 2>&1 | tee -a ${logfile}
 
-# add taskset to ionice cronjob for biglittle boards
-case ${BOARD} in
-  odroidxu4|bananapim3|nanopifire3|nanopct3plus|nanopim3|nanopi-r6s)
-    taskset='; taskset -c -p 4-7 ${srv}'
-    ;;
-  *rk3399*|*edge*|nanopct4|nanopim4|nanopineo4|renegade-elite|rockpi-4*|rockpro64|helios64)
-    taskset='; taskset -c -p 4-5 ${srv}'
-    ;;
-  odroidn2)
-    taskset='; taskset -c -p 2-5 ${srv}'
-    ;;
-esac
+  # add taskset to ionice cronjob for biglittle boards
+  case ${BOARD} in
+    odroidxu4|bananapim3|nanopifire3|nanopct3plus|nanopim3|nanopi-r6s)
+      taskset='; taskset -c -p 4-7 ${srv}'
+      ;;
+    *rk3399*|*edge*|nanopct4|nanopim4|nanopineo4|renegade-elite|rockpi-4*|rockpro64|helios64)
+      taskset='; taskset -c -p 4-5 ${srv}'
+      ;;
+    odroidn2)
+      taskset='; taskset -c -p 2-5 ${srv}'
+      ;;
+  esac
 
-# create ionice script
-cat << EOF > ${ioniceScript}
+  # create ionice script
+  cat << EOF > ${ioniceScript}
 #!/bin/sh
 
 for srv in \$(pgrep "ftpd|nfsiod|smbd"); do
   ionice -c1 -p \${srv} ${taskset};
 done
 EOF
-chmod 755 ${ioniceScript}
+  chmod 755 ${ioniceScript}
 
-# create ionice cronjob
-cat << EOF > ${ioniceCron}
+  # create ionice cronjob
+  cat << EOF > ${ioniceCron}
 * * * * * root ${ioniceScript} >/dev/null 2>&1
 EOF
-chmod 600 ${ioniceCron}
+  chmod 600 ${ioniceCron}
+fi
 
 # add pi user to ssh group if it exists
 if getent passwd pi > /dev/null; then
-  echo "Adding pi user to ssh group ..."
+  _log "Adding pi user to ssh group ..."
   usermod -a -G ssh pi
 fi
 
 # add user running the script to ssh group if not pi or root
 if [ -n "${SUDO_USER}" ] && [ ! "${SUDO_USER}" = "root" ] && [ ! "${SUDO_USER}" = "pi" ]; then
   if getent passwd ${SUDO_USER} > /dev/null; then
-    echo "Adding ${SUDO_USER} to the ssh group ..."
+    _log "Adding ${SUDO_USER} to the ssh group ..."
     usermod -a -G ssh ${SUDO_USER}
   fi
 fi
@@ -541,23 +596,23 @@ if [ ${skipNet} -ne 1 ]; then
     rm -fv "${defLink}"
   fi
 
-  echo "Removing network-manager and dhcpcd5 ..."
-  apt-get -y --autoremove purge network-manager dhcpcd5
+  _log "Removing network-manager and dhcpcd5 ..."
+  apt-get -y --autoremove purge network-manager dhcpcd5 2>&1 | tee -a ${logfile}
 
-  echo "Enable and start systemd-resolved ..."
-  systemctl enable systemd-resolved
-  systemctl start systemd-resolved
+  _log "Enable and start systemd-resolved ..."
+  systemctl enable systemd-resolved 2>&1 | tee -a ${logfile}
+  systemctl start systemd-resolved 2>&1 | tee -a ${logfile}
   rm /etc/resolv.conf
   ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
 
   if [ -f "${rfkill}" ]; then
-    echo "Unblocking wifi with rfkill ..."
+    _log "Unblocking wifi with rfkill ..."
     ${rfkill} unblock all
   fi
 
   for nic in $(ls /sys/class/net | grep -vE "br-|docker|dummy|ip6|lo|sit|tun|veth|virbr|wg"); do
     if grep -q "<devicename>${nic}</devicename>" ${OMV_CONFIG_FILE}; then
-      echo "${nic} already found in database.  Skipping..."
+      _log "${nic} already found in database.  Skipping..."
       continue
     fi
     if udevadm info /sys/class/net/${nic} | grep -q wlan; then
@@ -570,7 +625,7 @@ if [ ${skipNet} -ne 1 ]; then
           if [ -f "${crda}" ]; then
             awk -i inplace -F'=' -v country="$country" '/REGDOMAIN=/{$0=$1"="country} {print $0}' ${crda}
           fi
-          echo "Adding ${nic} to openmedivault database ..."
+          _log "Adding ${nic} to openmedivault database ..."
           jq --null-input --compact-output \
             "{uuid: \"${OMV_CONFIGOBJECT_NEW_UUID}\", devicename: \"${nic}\", type: \"wifi\", method: \"dhcp\", method6: \"dhcp\", wpassid: \"${wifiName}\", wpapsk: \"${wifiPass}\"}" | \
             omv-confdbadm update "conf.system.network.interface" -
@@ -580,7 +635,7 @@ if [ ${skipNet} -ne 1 ]; then
         fi
       fi
     else
-      echo "Adding ${nic} to openmedivault database ..."
+      _log "Adding ${nic} to openmedivault database ..."
       if [ -n "$(ip -j -o -4 addr show ${nic} | jq --raw-output  '.[] | select(.addr_info[0].dev) | .addr_info[0].local')" ] && \
       [ "$(ip -j -o -4 addr show ${nic} | jq --raw-output '.[] | select(.addr_info[0].dev) | .addr_info[0].dynamic')" == "null" ]; then
         ipv4Addr=$(ip -j -o -4 addr show ${nic} | jq --raw-output '.[] | select(.addr_info[0].dev) | .addr_info[0].local')
@@ -604,22 +659,25 @@ if [ ${skipNet} -ne 1 ]; then
   done
 
   if [ ${cfg} -eq 1 ]; then
-    echo "IP address may change and you could lose connection if running this script via ssh."
+    _log "IP address may change and you could lose connection if running this script via ssh."
 
     # create config files
-    if ! ${confCmd} systemd-networkd; then
-      echo "Error applying network changes.  Skipping reboot!"
+    ${confCmd} systemd-networkd 2>&1 | tee -a ${logfile}
+    if [ $? -gt 0 ]; then
+      _log "Error applying network changes.  Skipping reboot!"
       skipReboot=1
     fi
 
     if [ ${skipReboot} -ne 1 ]; then
-      echo "Network setup.  Rebooting..."
+      _log "Network setup.  Rebooting..."
       reboot
     fi
   else
-    echo "It is recommended to reboot and then setup the network adapter in the openmediavault web interface."
+    _log "It is recommended to reboot and then setup the network adapter in the openmediavault web interface."
   fi
 
 fi
+
+_log "done."
 
 exit 0
