@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-version="2.0.0"
+version="2.0.1"
 
 
 _log()
@@ -54,6 +54,16 @@ if [ ! -L "/sbin" ] || [ ! -L "/bin" ]; then
   echo "- https://www.freedesktop.org/wiki/Software/systemd/TheCaseForTheUsrMerge"
   echo "Exiting..."
   exit 102
+fi
+
+if [ -f "/.dockerenv" ]; then
+  echo "Docker detected. OMV does not work in Docker!"
+  exit 103
+fi
+
+if grep -q 'machine-lxc' /proc/1/cgroup; then
+  echo "LXC detected. OMV does not work in LXC!"
+  exit 104
 fi
 
 declare -i armbian=0
