@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-version="2.0.1"
+version="2.1.0"
 
 
 _log()
@@ -67,6 +67,7 @@ if grep -q 'machine-lxc' /proc/1/cgroup; then
 fi
 
 declare -i armbian=0
+declare -i beta=0
 declare -i cfg=0
 declare -i ipv6=0
 declare -i rpi=0
@@ -96,6 +97,7 @@ keyserver="hkp://keyserver.ubuntu.com:80"
 omvKey="/etc/apt/trusted.gpg.d/openmediavault-archive-keyring.gpg"
 omvRepo="http://packages.openmediavault.org/public"
 omvSources="/etc/apt/sources.list.d/openmediavault.list"
+resolvTmp="/root/resolv.conf"
 rfkill="/usr/sbin/rfkill"
 smbOptions=""
 url="https://github.com/OpenMediaVault-Plugin-Developers/packages/raw/master"
@@ -114,9 +116,12 @@ if [ -f /etc/armbian-release ]; then
   _log "Armbian"
 fi
 
-while getopts "fhinr" opt; do
+while getopts "bfhinr" opt; do
   _log "option ${opt}"
   case "${opt}" in
+    b)
+      beta=1
+      ;;
     f)
       skipFlash=1
       ;;
@@ -212,6 +217,18 @@ case ${codename} in
     keys="0E98404D386FA1D9 A48449044AAD5C5D"
     omvCodename="shaitan"
     version=6
+    ;;
+  bookworm)
+    if [ ${beta} -eq 1 ]; then
+      omvCodename="sandworm"
+      version=7
+    else
+      _log "Unsupported version.  Only Debian 10 (Buster) and 11 (Bullseye) are supported.  Exiting..."
+      exit 1
+    fi
+    _log "Copying /etc/resolv.conf to ${resolvTmp} ..."
+    cp -fv /etc/resolv.conf "${resolvTmp}"
+    _log "$(cat /etc/resolv.conf)"
     ;;
   *)
     _log "Unsupported version.  Only Debian 10 (Buster) and 11 (Bullseye) are supported.  Exiting..."
@@ -331,6 +348,16 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
   fi
 
   omv-confdbadm populate 2>&1 | tee -a ${logfile}
+  omv-salt deploy run hosts 2>&1 | tee -a ${logfile}
+fi
+_log "Testing DNS..."
+if ! ping -4 -q -c2 omv-extras.org 2>/dev/null; then
+  _log "DNS failing to resolve.  Fixing ..."
+  if [ -f "${resolvTmp}" ]; then
+    _log "Reverting /etc/resolv.conf to saved copy ..."
+    rm -fv /etc/resolv.conf
+    cp -v "${resolvTmp}" /etc/resolv.conf
+  fi
 fi
 
 # check if openmediavault is install properly
