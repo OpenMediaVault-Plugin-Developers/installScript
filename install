@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-version="2.1.0"
+version="2.2.0"
 
 
 _log()
@@ -74,6 +74,7 @@ declare -i rpi=0
 declare -i skipFlash=0
 declare -i skipNet=0
 declare -i skipReboot=0
+declare -i useMirror=0
 declare -i version
 
 declare -l codename
@@ -94,8 +95,10 @@ forceIpv4="/etc/apt/apt.conf.d/99force-ipv4"
 ioniceCron="/etc/cron.d/make_nas_processes_faster"
 ioniceScript="/usr/sbin/omv-ionice"
 keyserver="hkp://keyserver.ubuntu.com:80"
+mirror="https://mirrors.tuna.tsinghua.edu.cn"
 omvKey="/etc/apt/trusted.gpg.d/openmediavault-archive-keyring.gpg"
 omvRepo="http://packages.openmediavault.org/public"
+omvKeyUrl="${omvRepo}/archive.key"
 omvSources="/etc/apt/sources.list.d/openmediavault.list"
 resolvTmp="/root/resolv.conf"
 rfkill="/usr/sbin/rfkill"
@@ -116,7 +119,7 @@ if [ -f /etc/armbian-release ]; then
   _log "Armbian"
 fi
 
-while getopts "bfhinr" opt; do
+while getopts "bfhimnr" opt; do
   _log "option ${opt}"
   case "${opt}" in
     b)
@@ -131,6 +134,8 @@ while getopts "bfhinr" opt; do
       echo "    to skip the installation of the flashmemory plugin"
       echo "  -i"
       echo "    enable using IPv6 for apt"
+      echo "  -m"
+      echo "    to repo mirror from ${mirror}"
       echo "  -n"
       echo "    to skip the network setup"
       echo "  -r"
@@ -150,6 +155,10 @@ while getopts "bfhinr" opt; do
       ;;
     i)
       ipv6=1
+      ;;
+    m)
+      useMirror=1
+      omvRepo="${mirror}/OpenMediaVault/public"
       ;;
     n)
       skipNet=1
@@ -314,7 +323,7 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
 
   _log "Adding openmediavault repo and key..."
   echo "deb ${omvRepo} ${omvCodename} main" | tee ${omvSources}
-  wget --quiet --output-document=- "${omvRepo}/archive.key" | gpg --dearmor > "${omvKey}"
+  wget --quiet --output-document=- "${omvKeyUrl}" | gpg --dearmor > "${omvKey}"
 
   _log "Updating repos..."
   apt-get update 2>&1 | tee -a ${logfile}
@@ -378,6 +387,24 @@ if [ ${rpi} -eq 1 ]; then
     omv_set_default "OMV_APT_USE_OS_SECURITY" false true
   fi
   omv_set_default "OMV_APT_USE_KERNEL_BACKPORTS" false true
+fi
+
+# change repos if useMirror is specified
+if [ ${useMirror} -eq 1 ]; then
+  _log "Changing repos to mirror from ${mirror} ..."
+  omv_set_default OMV_APT_REPOSITORY_URL "${mirror}/OpenMediaVault/public" true
+  omv_set_default OMV_APT_ALT_REPOSITORY_URL "${mirror}/OpenMediaVault/packages" true
+  omv_set_default OMV_APT_KERNEL_BACKPORTS_REPOSITORY_URL "${mirror}/debian" true
+  omv_set_default OMV_APT_SECURITY_REPOSITORY_URL "${mirror}/debian-security" true
+  omv_set_default OMV_EXTRAS_APT_REPOSITORY_URL "${mirror}/OpenMediaVault/openmediavault-plugin-developers" true
+  omv_set_default OMV_DOCKER_APT_REPOSITORY_URL "${mirror}/docker-ce/linux/debian" true
+  omv_set_default OMV_PROXMOX_APT_REPOSITORY_URL "${mirror}/proxmox/debian" true
+
+  # update pillar default list - /srv/pillar/omv/default.sls
+  omv-salt stage run prepare 2>&1 | tee -a ${logfile}
+
+  # update config files
+  ${confCmd} apt 2>&1 | tee -a ${logfile}
 fi
 
 # install omv-extras
