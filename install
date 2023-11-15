@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-version="2.2.0"
+version="2.2.1"
 
 
 _log()
@@ -96,7 +96,7 @@ ioniceCron="/etc/cron.d/make_nas_processes_faster"
 ioniceScript="/usr/sbin/omv-ionice"
 keyserver="hkp://keyserver.ubuntu.com:80"
 mirror="https://mirrors.tuna.tsinghua.edu.cn"
-omvKey="/etc/apt/trusted.gpg.d/openmediavault-archive-keyring.gpg"
+omvKey="/usr/share/keyrings/openmediavault-archive-keyring.gpg"
 omvRepo="http://packages.openmediavault.org/public"
 omvKeyUrl="${omvRepo}/archive.key"
 omvSources="/etc/apt/sources.list.d/openmediavault.list"
@@ -322,7 +322,7 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
   fi
 
   _log "Adding openmediavault repo and key..."
-  echo "deb ${omvRepo} ${omvCodename} main" | tee ${omvSources}
+  echo "deb [signed-by=${omvKey}] ${omvRepo} ${omvCodename} main" | tee ${omvSources}
   wget --quiet --output-document=- "${omvKeyUrl}" | gpg --dearmor > "${omvKey}"
 
   _log "Updating repos..."
