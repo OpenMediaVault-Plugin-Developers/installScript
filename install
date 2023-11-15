@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-version="2.2.1"
+version="2.2.2"
 
 
 _log()
@@ -323,7 +323,7 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
 
   _log "Adding openmediavault repo and key..."
   echo "deb [signed-by=${omvKey}] ${omvRepo} ${omvCodename} main" | tee ${omvSources}
-  wget --quiet --output-document=- "${omvKeyUrl}" | gpg --dearmor > "${omvKey}"
+  wget --quiet --output-document=- "${omvKeyUrl}" | gpg --dearmor --yes --output "${omvKey}"
 
   _log "Updating repos..."
   apt-get update 2>&1 | tee -a ${logfile}
