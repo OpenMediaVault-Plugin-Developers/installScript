@@ -37,16 +37,6 @@ if [ ! "${systemd}" = "systemd" ]; then
   exit 100
 fi
 
-if dpkg -l | grep -Eqw "gdm3|sddm|lxdm|xdm|lightdm|slim|wdm"; then
-  echo "This system is running a desktop environment!"
-  echo "Please use a Lite version of the image or"
-  echo "do not choose to install a desktop environment."
-  echo "This install is not supported."
-  echo "Search the forum for more info - https://forum.openmediavault.org"
-  echo "Exiting..."
-  exit 101
-fi
-
 if [ ! -L "/sbin" ] || [ ! -L "/bin" ]; then
   echo "The /usr directories seem not to be migrated. Please check the"
   echo "following pages for more information:"
