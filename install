@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-version="2.2.2"
+version="2.2.3"
 
 
 _log()
@@ -103,6 +103,7 @@ omvSources="/etc/apt/sources.list.d/openmediavault.list"
 resolvTmp="/root/resolv.conf"
 rfkill="/usr/sbin/rfkill"
 smbOptions=""
+sshGrp="ssh"
 url="https://github.com/OpenMediaVault-Plugin-Developers/packages/raw/master"
 vsCodeList="/etc/apt/sources.list.d/vscode.list"
 wpaConf="/etc/wpa_supplicant/wpa_supplicant.conf"
@@ -238,6 +239,7 @@ case ${codename} in
     _log "Copying /etc/resolv.conf to ${resolvTmp} ..."
     cp -fv /etc/resolv.conf "${resolvTmp}"
     _log "$(cat /etc/resolv.conf)"
+    sshGrp="_ssh"
     ;;
   *)
     _log "Unsupported version.  Only Debian 10 (Buster) and 11 (Bullseye) are supported.  Exiting..."
@@ -637,7 +639,7 @@ fi
 # add pi user to ssh group if it exists
 if getent passwd pi > /dev/null; then
   _log "Adding pi user to ssh group ..."
-  usermod -a -G ssh pi
+  usermod -a -G ${sshGrp} pi
 fi
 
 # add user running the script to ssh group if not pi or root
