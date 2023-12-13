@@ -2,7 +2,7 @@
 #
 # shellcheck disable=SC1090,SC1091,SC1117,SC2016,SC2046,SC2086
 #
-# version: 0.0.1
+# version: 0.0.2
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -16,6 +16,10 @@ export LANG=C.UTF-8
 
 echo "Removing old sources ..."
 rm -f /etc/apt/sources.list.d/omvextras.list /etc/apt/sources.list.d/omv-extras-org.list
+
+if [ -f "/etc/apt/sources.list.d/pvekernel.list" ]; then
+  rm -fv /etc/apt/sources.list.d/pvekernel.list
+fi
 
 echo "Clearing cache ..."
 /usr/bin/salt-call --local saltutil.clear_cache
@@ -48,6 +52,10 @@ fi
 
 echo "Running apt-get update ..."
 apt-get update
+if [ $? -gt 0 ]; then
+  echo "apt-get update failed.  Your repos need to be fixed."
+  exit 1
+fi
 
 echo "Running apt-get dist-upgrade ..."
 apt-get --yes \
