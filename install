@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-version="2.2.3"
+scriptversion="2.3.0"
 
 
 _log()
@@ -24,7 +24,7 @@ _log()
   echo "[$(date +'%Y-%m-%d %H:%M:%S%z')] [omvinstall] ${msg}" | tee -a ${logfile}
 }
 
-_log "version :: ${version}"
+_log "script version :: ${scriptversion}"
 
 if [[ $(id -u) -ne 0 ]]; then
   echo "This script must be executed as root or using sudo."
@@ -67,7 +67,6 @@ if grep -q 'machine-lxc' /proc/1/cgroup; then
 fi
 
 declare -i armbian=0
-declare -i beta=0
 declare -i cfg=0
 declare -i ipv6=0
 declare -i rpi=0
@@ -120,12 +119,9 @@ if [ -f /etc/armbian-release ]; then
   _log "Armbian"
 fi
 
-while getopts "bfhimnr" opt; do
+while getopts "fhimnr" opt; do
   _log "option ${opt}"
   case "${opt}" in
-    b)
-      beta=1
-      ;;
     f)
       skipFlash=1
       ;;
@@ -149,8 +145,8 @@ while getopts "bfhimnr" opt; do
       echo ""
       echo "Notes:"
       echo "  This script will always install:"
-      echo "    - OMV 5.x on Debian 10 (Buster) EOL"
-      echo "    - OMV 6.x on Debian 11 (Bullseye)"
+      echo "    - OMV 6.x (shaitan) on Debian 11 (Bullseye)"
+      echo "    - OMV 7.x (sandworm) on Debian 12 (Bookworm)"
       echo ""
       exit 100
       ;;
@@ -216,33 +212,21 @@ codename="$(lsb_release --codename --short)"
 _log "Codename :: ${codename}"
 
 case ${codename} in
-  buster)
-    keys="648ACFD622F3D138 112695A0E562B32A"
-    omvCodename="usul"
-    version=5
-    smbOptions="${smbOptions}\nwrite cache size = 524288"
-    _log "This version of OMV is End of Life.  Please consider using OMV 6.x."
-    ;;
   bullseye)
     keys="0E98404D386FA1D9 A48449044AAD5C5D"
     omvCodename="shaitan"
     version=6
     ;;
   bookworm)
-    if [ ${beta} -eq 1 ]; then
-      omvCodename="sandworm"
-      version=7
-    else
-      _log "Unsupported version.  Only Debian 10 (Buster) and 11 (Bullseye) are supported.  Exiting..."
-      exit 1
-    fi
+    omvCodename="sandworm"
+    version=7
     _log "Copying /etc/resolv.conf to ${resolvTmp} ..."
     cp -fv /etc/resolv.conf "${resolvTmp}"
     _log "$(cat /etc/resolv.conf)"
     sshGrp="_ssh"
     ;;
   *)
-    _log "Unsupported version.  Only Debian 10 (Buster) and 11 (Bullseye) are supported.  Exiting..."
+    _log "Unsupported version.  Only 11 (Bullseye) and 12 (Bookworm) are supported.  Exiting..."
     exit 1
   ;;
 esac
