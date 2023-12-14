@@ -6,7 +6,6 @@
 
 ### Notes
 - This script will always install
-  - OMV 5.x on Debian 10 (Buster) EOL
   - OMV 6.x on Debian 11 (Bullseye)
   - OMV 7.x on Debian 12 (Bookworm)
 
