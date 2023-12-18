@@ -2,7 +2,7 @@
 #
 # shellcheck disable=SC1090,SC1091,SC1117,SC2016,SC2046,SC2086
 #
-# version: 0.0.3
+# version: 0.0.4
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -68,6 +68,12 @@ apt-get --yes \
         --option DPkg::Options::="--force-confdef" \
         --option DPkg::Options::="--force-confold" \
         dist-upgrade
+
+if [ ! -f "/usr/sbin/omv-mkaptidx" ]; then
+  echo "omv-mkaptidx does not exist.  Downloading..."
+  wget -O /usr/sbin/omv-mkaptidx https://github.com/openmediavault/openmediavault/raw/master/deb/openmediavault/usr/sbin/omv-mkaptidx
+  chmod +x /usr/sbin/omv-mkaptidx
+fi
 
 echo "Rebuild apt index ..."
 omv-mkaptidx
