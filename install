@@ -2,7 +2,7 @@
 #
 # shellcheck disable=SC1090,SC1091,SC2010,SC2016,SC2046,SC2086,SC2174,SC2181
 #
-# Copyright (c) 2015-2023 OpenMediaVault Plugin Developers
+# Copyright (c) 2015-2024 OpenMediaVault Plugin Developers
 # Copyright (c) 2017-2020 Armbian Developers
 #
 # This file is licensed under the terms of the GNU General Public
@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-scriptversion="2.3.0"
+scriptversion="2.3.1"
 
 
 _log()
@@ -509,6 +509,7 @@ EOF
 fi
 
 # get default governor for kernel
+modprobe --quiet configs
 if [ -f "/proc/config.gz" ]; then
   defaultGov="$(zgrep "${defaultGovSearch}" /proc/config.gz | sed -e "s/${defaultGovSearch}\(.*\)=y/\1/")"
 elif [ -f "/boot/config-$(uname -r)" ]; then
