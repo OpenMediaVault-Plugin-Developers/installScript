@@ -630,8 +630,8 @@ fi
 # add user running the script to ssh group if not pi or root
 if [ -n "${SUDO_USER}" ] && [ ! "${SUDO_USER}" = "root" ] && [ ! "${SUDO_USER}" = "pi" ]; then
   if getent passwd ${SUDO_USER} > /dev/null; then
-    _log "Adding ${SUDO_USER} to the ssh group ..."
-    usermod -a -G ssh ${SUDO_USER}
+    _log "Adding ${SUDO_USER} to the ${sshGrp} group ..."
+    usermod -a -G ${sshGrp} ${SUDO_USER}
   fi
 fi
 
