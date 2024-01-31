@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-scriptversion="2.3.3"
+scriptversion="2.3.4"
 
 
 _log()
@@ -645,7 +645,9 @@ if [ ${skipNet} -ne 1 ]; then
   defLink="/etc/systemd/network/99-default.link"
   if [ -e "${defLink}" ]; then
     if [ ${rpi} -eq 1 ] && [ ${version} -eq 7 ]; then
-      _log "Skip enabling predictive naming on RPi"
+      if [ -f "/usr/bin/raspi-config" ]; then
+        raspi-config nonint do_net_names 1
+      fi
     else
       rm -fv "${defLink}"
     fi
