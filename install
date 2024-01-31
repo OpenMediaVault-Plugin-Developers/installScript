@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-scriptversion="2.3.4"
+scriptversion="2.3.5"
 
 
 _log()
@@ -645,8 +645,10 @@ if [ ${skipNet} -ne 1 ]; then
   defLink="/etc/systemd/network/99-default.link"
   if [ -e "${defLink}" ]; then
     if [ ${rpi} -eq 1 ] && [ ${version} -eq 7 ]; then
-      if [ -f "/usr/bin/raspi-config" ]; then
-        raspi-config nonint do_net_names 1
+      mac="$(ip -j a show dev eth0 | jq -r .[].address)"
+      _log "mac address - ${mac}"
+      if [ -n "${mac}" ]; then
+        echo -e "[Match]\nMACAddress=${mac}\n[Link]\nName=eth0" > /etc/systemd/network/10-persistent-net.link
       fi
     else
       rm -fv "${defLink}"
