@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-scriptversion="2.3.2"
+scriptversion="2.3.3"
 
 
 _log()
@@ -644,7 +644,11 @@ if [ ${skipNet} -ne 1 ]; then
 
   defLink="/etc/systemd/network/99-default.link"
   if [ -e "${defLink}" ]; then
-    rm -fv "${defLink}"
+    if [ ${rpi} -eq 1 ] && [ ${version} -eq 7 ]; then
+      _log "Skip enabling predictive naming on RPi"
+    else
+      rm -fv "${defLink}"
+    fi
   fi
 
   _log "Removing network-manager and dhcpcd5 ..."
