@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# shellcheck disable=SC1090,SC1091,SC2010,SC2016,SC2046,SC2086,SC2174,SC2181
+# shellcheck disable=SC1090,SC1091,SC2010,SC2016,SC2046,SC2086,SC2174
 #
 # Copyright (c) 2015-2024 OpenMediaVault Plugin Developers
 # Copyright (c) 2017-2020 Armbian Developers
@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-scriptversion="2.3.1"
+scriptversion="2.3.2"
 
 
 _log()
@@ -297,11 +297,11 @@ omvInstall=$(dpkg -l | awk '$2 == "openmediavault" { print $1 }')
 if [[ ! "${omvInstall}" == "ii" ]]; then
   _log "Installing openmediavault required packages..."
   apt-get --yes --no-install-recommends install postfix 2>&1 | tee -a ${logfile}
-  if [ $? -gt 0 ]; then
+  if [ ${PIPESTATUS[0]} -gt 0 ]; then
     _log "failed installing postfix"
     sed -i '/^myhostname/d' /etc/postfix/main.cf
     apt-get --yes --fix-broken install 2>&1 | tee -a ${logfile}
-    if [ $? -gt 0 ]; then
+    if [ ${PIPESTATUS[0]} -gt 0 ]; then
       _log "failed installing postfix and unable to fix"
       exit 2
     fi
@@ -313,14 +313,14 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
 
   _log "Updating repos..."
   apt-get update 2>&1 | tee -a ${logfile}
-  if [ $? -gt 0 ]; then
+  if [ ${PIPESTATUS[0]} -gt 0 ]; then
     _log "failed to update apt repos."
     exit 2
   fi
 
   _log "Install openmediavault-keyring..."
   apt-get --yes install openmediavault-keyring 2>&1 | tee -a ${logfile}
-  if [ $? -gt 0 ]; then
+  if [ ${PIPESTATUS[0]} -gt 0 ]; then
     _log "failed to install openmediavault-keyring package."
     exit 2
   fi
@@ -328,7 +328,7 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
   monitInstall=$(dpkg -l | awk '$2 == "monit" { print $1 }')
   if [[ ! "${monitInstall}" == "ii" ]]; then
     apt-get --yes --no-install-recommends install monit 2>&1 | tee -a ${logfile}
-    if [ $? -gt 0 ]; then
+    if [ ${PIPESTATUS[0]} -gt 0 ]; then
       _log "failed installing monit"
       exit 2
     fi
@@ -337,7 +337,7 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
   _log "Installing openmediavault..."
   aptFlags="--yes --auto-remove --show-upgraded --allow-downgrades --allow-change-held-packages --no-install-recommends"
   apt-get ${aptFlags} install openmediavault 2>&1 | tee -a ${logfile}
-  if [ $? -gt 0 ]; then
+  if [ ${PIPESTATUS[0]} -gt 0 ]; then
     _log "failed to install openmediavault package."
     exit 2
   fi
@@ -409,7 +409,7 @@ if [ -f "${file}" ]; then
     if [[ ! "${omvextrasInstall}" == "ii" ]]; then
       _log "omv-extras failed to install correctly.  Trying to fix apt ..."
       apt-get --yes --fix-broken install 2>&1 | tee -a ${logfile}
-      if [ $? -gt 0 ]; then
+      if [ ${PIPESTATUS[0]} -gt 0 ]; then
         _log "Fix failed and openmediavault-omvextrasorg is in a bad state."
         exit 3
       fi
@@ -452,14 +452,14 @@ if [ ${skipFlash} -eq 1 ]; then
 else
   _log "Install folder2ram..."
   apt-get --yes --fix-missing --no-install-recommends install folder2ram 2>&1 | tee -a ${logfile}
-  if [ $? -gt 0 ]; then
+  if [ ${PIPESTATUS[0]} -eq 0 ]; then
     _log "Installed folder2ram."
   else
     _log "Failed to install folder2ram."
   fi
   _log "Install flashmemory plugin..."
   apt-get --yes install openmediavault-flashmemory 2>&1 | tee -a ${logfile}
-  if [ $? -gt 0 ]; then
+  if [ ${PIPESTATUS[0]} -eq 0 ]; then
     _log "Installed flashmemory plugin."
   else
     _log "Failed to install flashmemory plugin."
@@ -714,7 +714,7 @@ if [ ${skipNet} -ne 1 ]; then
 
     # create config files
     ${confCmd} systemd-networkd 2>&1 | tee -a ${logfile}
-    if [ $? -gt 0 ]; then
+    if [ ${PIPESTATUS[0]} -gt 0 ]; then
       _log "Error applying network changes.  Skipping reboot!"
       skipReboot=1
     fi
