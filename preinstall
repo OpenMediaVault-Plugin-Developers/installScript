@@ -1,0 +1,13 @@
+#!/bin/bash
+
+mac="$(ip -j a show dev eth0 | jq -r .[].address | head -n1)"
+if [ -z "${mac}" ]; then
+  mac="$(ip -j a show dev end0 | jq -r .[].address | head -n1)"
+fi
+if [ -n "${mac}" ]; then
+  echo "mac - ${mac}"
+  echo -e "[Match]\nMACAddress=${mac}\n[Link]\nName=eth0" > /etc/systemd/network/10-persistent-eth0.link
+  echo "Please reboot the system now."
+fi
+
+exit 0
