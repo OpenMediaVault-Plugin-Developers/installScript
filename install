@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-scriptversion="2.3.6"
+scriptversion="2.3.7"
 
 
 _log()
@@ -643,17 +643,7 @@ if [ ${skipNet} -ne 1 ]; then
   fi
 
   defLink="/etc/systemd/network/99-default.link"
-  if [ -e "${defLink}" ]; then
-    if [ ${rpi} -eq 1 ] && [ ${version} -eq 7 ]; then
-      mac="$(ip -j a show dev eth0 | jq -r .[].address | head -n1)"
-      _log "mac address - ${mac}"
-      if [ -n "${mac}" ]; then
-        echo -e "[Match]\nMACAddress=${mac}\n[Link]\nName=eth0" > /etc/systemd/network/10-persistent-eth0.link
-      fi
-    else
-      rm -fv "${defLink}"
-    fi
-  fi
+  rm -fv "${defLink}"
 
   _log "Removing network-manager and dhcpcd5 ..."
   apt-get -y --autoremove purge network-manager dhcpcd5 2>&1 | tee -a ${logfile}
