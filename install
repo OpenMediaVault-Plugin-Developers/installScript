@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-scriptversion="2.3.8"
+scriptversion="2.3.9"
 
 
 _log()
@@ -645,10 +645,13 @@ if [ ${skipNet} -ne 1 ]; then
   defLink="/etc/systemd/network/99-default.link"
   rm -fv "${defLink}"
   if [ ${rpi} -eq 1 ] && [ ${version} -eq 7 ]; then
+    _log "Force eth0 name on RPi ..."
     mac="$(ip -j a show dev eth0 | jq -r .[].address | head -n1)"
+    if [ -z "${mac}" ]; then
+      mac="$(ip -j a show dev end0 | jq -r .[].address | head -n1)"
+    fi
     _log "mac address - ${mac}"
     if [ -n "${mac}" ]; then
-      _log "Force eth0 name on RPi ..."
       echo -e "[Match]\nMACAddress=${mac}\n[Link]\nName=eth0" > /etc/systemd/network/10-persistent-eth0.link
     fi
   fi
