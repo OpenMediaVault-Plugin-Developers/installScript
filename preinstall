@@ -6,7 +6,7 @@ export LANG=C.UTF-8
 export LANGUAGE=C
 export LC_ALL=C.UTF-8
 
-if grep -rq raspberrypi.org /etc/apt/*; then
+if grep -iq raspberry /proc/cpuinfo; then
   apt-get --yes --no-install-recommends install jq
   mac="$(ip -j a show dev eth0 | jq -r .[].address | head -n1)"
   if [ -z "${mac}" ]; then
