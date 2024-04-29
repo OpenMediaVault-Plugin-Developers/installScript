@@ -2,7 +2,7 @@
 #
 # shellcheck disable=SC1090,SC1091,SC1117,SC2016,SC2046,SC2086
 #
-# version: 0.0.6
+# version: 0.0.7
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -57,8 +57,7 @@ if [ -f "${security}" ]; then
 fi
 
 echo "Running apt-get update ..."
-apt-get update
-if [ $? -gt 0 ]; then
+if ! apt-get update; then
   echo "apt-get update failed.  Your repos need to be fixed."
   exit 1
 fi
@@ -69,16 +68,12 @@ apt-get --yes \
         --option DPkg::Options::="--force-confold" \
         dist-upgrade
 
-
-if [ ! -f "/usr/sbin/omv-mkaptidx" ]; then
-  echo "omv-mkaptidx does not exist.  Downloading..."
-  wget -O /usr/sbin/omv-mkaptidx https://github.com/openmediavault/openmediavault/raw/master/deb/openmediavault/usr/sbin/omv-mkaptidx
-  chmod +x /usr/sbin/omv-mkaptidx
-else
-  if ! grep -q 'bin/sh' /usr/sbin/omv-mkaptidx; then
-    rm -f /usr/sbin/omv-mkaptidx
-    dpkg-divert --remove --rename /usr/sbin/omv-mkaptidx
-  fi
+mkaptidx_url="https://github.com/openmediavault/openmediavault/raw/master/deb/openmediavault/usr/sbin/omv-mkaptidx"
+mkaptidx_path="/usr/sbin/omv-mkaptidx"
+if [ ! -f "${mkaptidx_path}" ] || ! grep -q 'bin/sh' "${mkaptidx_path}"; then
+  echo "Downloading omv-mkaptidx..."
+  wget --output-document="${mkaptidx_path}" "${mkaptidx_url}"
+  chmod +x "${mkaptidx_path}"
 fi
 
 echo "Rebuild apt index ..."
