@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-scriptversion="2.3.9"
+scriptversion="2.3.10"
 
 
 _log()
@@ -291,6 +291,9 @@ if [ ${armbian} -eq 1 ]; then
     maxspd="${MAX_SPEED}"
   fi
 fi
+
+# make sure ssh is enabled
+systemctl enable ssh.service
 
 # install openmediavault if not installed already
 omvInstall=$(dpkg -l | awk '$2 == "openmediavault" { print $1 }')
