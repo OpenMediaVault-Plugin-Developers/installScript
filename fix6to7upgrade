@@ -70,11 +70,10 @@ apt-get --yes \
 
 mkaptidx_url="https://github.com/openmediavault/openmediavault/raw/master/deb/openmediavault/usr/sbin/omv-mkaptidx"
 mkaptidx_path="/usr/sbin/omv-mkaptidx"
-if [ ! -f "${mkaptidx_path}" ] || ! grep -q 'bin/sh' "${mkaptidx_path}"; then
-  echo "Downloading omv-mkaptidx..."
-  wget --output-document="${mkaptidx_path}" "${mkaptidx_url}"
-  chmod +x "${mkaptidx_path}"
-fi
+rm -fv "${mkaptidx_path}"
+echo "Downloading omv-mkaptidx..."
+wget --output-document="${mkaptidx_path}" "${mkaptidx_url}"
+chmod +x "${mkaptidx_path}"
 
 echo "Rebuild apt index ..."
 omv-mkaptidx
