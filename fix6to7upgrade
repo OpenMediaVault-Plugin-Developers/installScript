@@ -2,7 +2,7 @@
 #
 # shellcheck disable=SC1090,SC1091,SC1117,SC2016,SC2046,SC2086
 #
-# version: 0.0.7
+# version: 0.0.8
 #
 
 if [[ $(id -u) -ne 0 ]]; then
