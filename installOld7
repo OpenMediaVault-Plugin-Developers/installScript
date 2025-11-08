@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-# shellcheck disable=SC1090,SC1091,SC2010,SC2016,SC2046,SC2086,SC2174,SC2181
+# shellcheck disable=SC1090,SC1091,SC2010,SC2016,SC2046,SC2086,SC2174
 #
-# Copyright (c) 2015-2023 OpenMediaVault Plugin Developers
+# Copyright (c) 2015-2024 OpenMediaVault Plugin Developers
 # Copyright (c) 2017-2020 Armbian Developers
 #
 # This file is licensed under the terms of the GNU General Public
@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-version="2.2.3"
+scriptversion="2.3.10"
 
 
 _log()
@@ -24,7 +24,7 @@ _log()
   echo "[$(date +'%Y-%m-%d %H:%M:%S%z')] [omvinstall] ${msg}" | tee -a ${logfile}
 }
 
-_log "version :: ${version}"
+_log "script version :: ${scriptversion}"
 
 if [[ $(id -u) -ne 0 ]]; then
   echo "This script must be executed as root or using sudo."
@@ -67,7 +67,6 @@ if grep -q 'machine-lxc' /proc/1/cgroup; then
 fi
 
 declare -i armbian=0
-declare -i beta=0
 declare -i cfg=0
 declare -i ipv6=0
 declare -i rpi=0
@@ -120,12 +119,9 @@ if [ -f /etc/armbian-release ]; then
   _log "Armbian"
 fi
 
-while getopts "bfhimnr" opt; do
+while getopts "fhimnr" opt; do
   _log "option ${opt}"
   case "${opt}" in
-    b)
-      beta=1
-      ;;
     f)
       skipFlash=1
       ;;
@@ -149,8 +145,8 @@ while getopts "bfhimnr" opt; do
       echo ""
       echo "Notes:"
       echo "  This script will always install:"
-      echo "    - OMV 5.x on Debian 10 (Buster) EOL"
-      echo "    - OMV 6.x on Debian 11 (Bullseye)"
+      echo "    - OMV 6.x (shaitan) on Debian 11 (Bullseye)"
+      echo "    - OMV 7.x (sandworm) on Debian 12 (Bookworm)"
       echo ""
       exit 100
       ;;
@@ -216,33 +212,21 @@ codename="$(lsb_release --codename --short)"
 _log "Codename :: ${codename}"
 
 case ${codename} in
-  buster)
-    keys="648ACFD622F3D138 112695A0E562B32A"
-    omvCodename="usul"
-    version=5
-    smbOptions="${smbOptions}\nwrite cache size = 524288"
-    _log "This version of OMV is End of Life.  Please consider using OMV 6.x."
-    ;;
   bullseye)
     keys="0E98404D386FA1D9 A48449044AAD5C5D"
     omvCodename="shaitan"
     version=6
     ;;
   bookworm)
-    if [ ${beta} -eq 1 ]; then
-      omvCodename="sandworm"
-      version=7
-    else
-      _log "Unsupported version.  Only Debian 10 (Buster) and 11 (Bullseye) are supported.  Exiting..."
-      exit 1
-    fi
+    omvCodename="sandworm"
+    version=7
     _log "Copying /etc/resolv.conf to ${resolvTmp} ..."
     cp -fv /etc/resolv.conf "${resolvTmp}"
     _log "$(cat /etc/resolv.conf)"
     sshGrp="_ssh"
     ;;
   *)
-    _log "Unsupported version.  Only Debian 10 (Buster) and 11 (Bullseye) are supported.  Exiting..."
+    _log "Unsupported version.  Only 11 (Bullseye) and 12 (Bookworm) are supported.  Exiting..."
     exit 1
   ;;
 esac
@@ -308,16 +292,19 @@ if [ ${armbian} -eq 1 ]; then
   fi
 fi
 
+# make sure ssh is enabled
+systemctl enable ssh.service
+
 # install openmediavault if not installed already
 omvInstall=$(dpkg -l | awk '$2 == "openmediavault" { print $1 }')
 if [[ ! "${omvInstall}" == "ii" ]]; then
   _log "Installing openmediavault required packages..."
   apt-get --yes --no-install-recommends install postfix 2>&1 | tee -a ${logfile}
-  if [ $? -gt 0 ]; then
+  if [ ${PIPESTATUS[0]} -gt 0 ]; then
     _log "failed installing postfix"
     sed -i '/^myhostname/d' /etc/postfix/main.cf
     apt-get --yes --fix-broken install 2>&1 | tee -a ${logfile}
-    if [ $? -gt 0 ]; then
+    if [ ${PIPESTATUS[0]} -gt 0 ]; then
       _log "failed installing postfix and unable to fix"
       exit 2
     fi
@@ -329,14 +316,14 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
 
   _log "Updating repos..."
   apt-get update 2>&1 | tee -a ${logfile}
-  if [ $? -gt 0 ]; then
+  if [ ${PIPESTATUS[0]} -gt 0 ]; then
     _log "failed to update apt repos."
     exit 2
   fi
 
   _log "Install openmediavault-keyring..."
   apt-get --yes install openmediavault-keyring 2>&1 | tee -a ${logfile}
-  if [ $? -gt 0 ]; then
+  if [ ${PIPESTATUS[0]} -gt 0 ]; then
     _log "failed to install openmediavault-keyring package."
     exit 2
   fi
@@ -344,7 +331,7 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
   monitInstall=$(dpkg -l | awk '$2 == "monit" { print $1 }')
   if [[ ! "${monitInstall}" == "ii" ]]; then
     apt-get --yes --no-install-recommends install monit 2>&1 | tee -a ${logfile}
-    if [ $? -gt 0 ]; then
+    if [ ${PIPESTATUS[0]} -gt 0 ]; then
       _log "failed installing monit"
       exit 2
     fi
@@ -353,7 +340,7 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
   _log "Installing openmediavault..."
   aptFlags="--yes --auto-remove --show-upgraded --allow-downgrades --allow-change-held-packages --no-install-recommends"
   apt-get ${aptFlags} install openmediavault 2>&1 | tee -a ${logfile}
-  if [ $? -gt 0 ]; then
+  if [ ${PIPESTATUS[0]} -gt 0 ]; then
     _log "failed to install openmediavault package."
     exit 2
   fi
@@ -425,7 +412,7 @@ if [ -f "${file}" ]; then
     if [[ ! "${omvextrasInstall}" == "ii" ]]; then
       _log "omv-extras failed to install correctly.  Trying to fix apt ..."
       apt-get --yes --fix-broken install 2>&1 | tee -a ${logfile}
-      if [ $? -gt 0 ]; then
+      if [ ${PIPESTATUS[0]} -gt 0 ]; then
         _log "Fix failed and openmediavault-omvextrasorg is in a bad state."
         exit 3
       fi
@@ -468,14 +455,14 @@ if [ ${skipFlash} -eq 1 ]; then
 else
   _log "Install folder2ram..."
   apt-get --yes --fix-missing --no-install-recommends install folder2ram 2>&1 | tee -a ${logfile}
-  if [ $? -gt 0 ]; then
+  if [ ${PIPESTATUS[0]} -eq 0 ]; then
     _log "Installed folder2ram."
   else
     _log "Failed to install folder2ram."
   fi
   _log "Install flashmemory plugin..."
   apt-get --yes install openmediavault-flashmemory 2>&1 | tee -a ${logfile}
-  if [ $? -gt 0 ]; then
+  if [ ${PIPESTATUS[0]} -eq 0 ]; then
     _log "Installed flashmemory plugin."
   else
     _log "Failed to install flashmemory plugin."
@@ -525,6 +512,7 @@ EOF
 fi
 
 # get default governor for kernel
+modprobe --quiet configs
 if [ -f "/proc/config.gz" ]; then
   defaultGov="$(zgrep "${defaultGovSearch}" /proc/config.gz | sed -e "s/${defaultGovSearch}\(.*\)=y/\1/")"
 elif [ -f "/boot/config-$(uname -r)" ]; then
@@ -645,8 +633,8 @@ fi
 # add user running the script to ssh group if not pi or root
 if [ -n "${SUDO_USER}" ] && [ ! "${SUDO_USER}" = "root" ] && [ ! "${SUDO_USER}" = "pi" ]; then
   if getent passwd ${SUDO_USER} > /dev/null; then
-    _log "Adding ${SUDO_USER} to the ssh group ..."
-    usermod -a -G ssh ${SUDO_USER}
+    _log "Adding ${SUDO_USER} to the ${sshGrp} group ..."
+    usermod -a -G ${sshGrp} ${SUDO_USER}
   fi
 fi
 
@@ -658,8 +646,17 @@ if [ ${skipNet} -ne 1 ]; then
   fi
 
   defLink="/etc/systemd/network/99-default.link"
-  if [ -e "${defLink}" ]; then
-    rm -fv "${defLink}"
+  rm -fv "${defLink}"
+  if [ ${rpi} -eq 1 ] && [ ${version} -eq 7 ]; then
+    _log "Force eth0 name on RPi ..."
+    mac="$(ip -j a show dev eth0 | jq -r .[].address | head -n1)"
+    if [ -z "${mac}" ]; then
+      mac="$(ip -j a show dev end0 | jq -r .[].address | head -n1)"
+    fi
+    _log "mac address - ${mac}"
+    if [ -n "${mac}" ]; then
+      echo -e "[Match]\nMACAddress=${mac}\n[Link]\nName=eth0" > /etc/systemd/network/10-persistent-eth0.link
+    fi
   fi
 
   _log "Removing network-manager and dhcpcd5 ..."
@@ -729,7 +726,7 @@ if [ ${skipNet} -ne 1 ]; then
 
     # create config files
     ${confCmd} systemd-networkd 2>&1 | tee -a ${logfile}
-    if [ $? -gt 0 ]; then
+    if [ ${PIPESTATUS[0]} -gt 0 ]; then
       _log "Error applying network changes.  Skipping reboot!"
       skipReboot=1
     fi
