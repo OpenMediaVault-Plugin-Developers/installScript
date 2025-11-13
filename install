@@ -2,7 +2,7 @@
 #
 # shellcheck disable=SC1090,SC1091,SC2010,SC2016,SC2046,SC2086,SC2174
 #
-# Copyright (c) 2015-2024 OpenMediaVault Plugin Developers
+# Copyright (c) 2015-2025 OpenMediaVault Plugin Developers
 # Copyright (c) 2017-2020 Armbian Developers
 #
 # This file is licensed under the terms of the GNU General Public
@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-scriptversion="2.3.10"
+scriptversion="3.0.0"
 
 
 _log()
@@ -87,13 +87,12 @@ declare maxspd=""
 
 aptclean="/usr/sbin/omv-aptclean"
 confCmd="omv-salt deploy run"
-cpuFreqDef="/etc/default/cpufrequtils"
 crda="/etc/default/crda"
 defaultGovSearch="^CONFIG_CPU_FREQ_DEFAULT_GOV_"
+flash="flashmemory"
 forceIpv4="/etc/apt/apt.conf.d/99force-ipv4"
 ioniceCron="/etc/cron.d/make_nas_processes_faster"
 ioniceScript="/usr/sbin/omv-ionice"
-keyserver="hkp://keyserver.ubuntu.com:80"
 mirror="https://mirrors.tuna.tsinghua.edu.cn"
 omvKey="/usr/share/keyrings/openmediavault-archive-keyring.gpg"
 omvRepo="http://packages.openmediavault.org/public"
@@ -102,7 +101,6 @@ omvSources="/etc/apt/sources.list.d/openmediavault.list"
 resolvTmp="/root/resolv.conf"
 rfkill="/usr/sbin/rfkill"
 smbOptions=""
-sshGrp="ssh"
 url="https://github.com/OpenMediaVault-Plugin-Developers/packages/raw/master"
 vsCodeList="/etc/apt/sources.list.d/vscode.list"
 wpaConf="/etc/wpa_supplicant/wpa_supplicant.conf"
@@ -128,7 +126,7 @@ while getopts "fhimnr" opt; do
     h)
       echo "Use the following flags:"
       echo "  -f"
-      echo "    to skip the installation of the flashmemory plugin"
+      echo "    to skip the installation of the flashmemory (omv7) / writecache (omv8) plugin"
       echo "  -i"
       echo "    enable using IPv6 for apt"
       echo "  -m"
@@ -145,8 +143,8 @@ while getopts "fhimnr" opt; do
       echo ""
       echo "Notes:"
       echo "  This script will always install:"
-      echo "    - OMV 6.x (shaitan) on Debian 11 (Bullseye)"
       echo "    - OMV 7.x (sandworm) on Debian 12 (Bookworm)"
+      echo "    - OMV 8.x (synchrony) on Debian 13 (Trixie)"
       echo ""
       exit 100
       ;;
@@ -182,13 +180,13 @@ if [ ${ipv6} -ne 1 ]; then
   echo 'Acquire::ForceIPv4 "true";' > ${forceIpv4}
 fi
 
-
 if [ -f "/usr/libexec/config-rtl8367rb.sh" ]; then
   _log "Skipping network because swconfig controlled switch found."
   skipNet=1
 fi
 
 _log "Updating repos before installing..."
+echo 'Acquire::Languages "none";' | tee /etc/apt/apt.conf.d/99no-translations
 apt-get --allow-releaseinfo-change update 2>&1 | tee -a ${logfile}
 
 _log "Installing lsb_release..."
@@ -197,41 +195,48 @@ apt-get --yes --no-install-recommends --reinstall install lsb-release 2>&1 | tee
 arch="$(dpkg --print-architecture)"
 _log "Arch :: ${arch}"
 
-# exit if not supported architecture
-case ${arch} in
-  arm64|armhf|amd64|i386)
-    _log "Supported architecture"
-    ;;
-  *)
-    _log "Unsupported architecture :: ${arch}"
-    exit 5
-    ;;
-esac
-
 codename="$(lsb_release --codename --short)"
 _log "Codename :: ${codename}"
 
 case ${codename} in
-  bullseye)
-    keys="0E98404D386FA1D9 A48449044AAD5C5D"
-    omvCodename="shaitan"
-    version=6
-    ;;
   bookworm)
     omvCodename="sandworm"
     version=7
-    _log "Copying /etc/resolv.conf to ${resolvTmp} ..."
-    cp -fv /etc/resolv.conf "${resolvTmp}"
-    _log "$(cat /etc/resolv.conf)"
-    sshGrp="_ssh"
+    if [[ ! ${arch} =~ ^(arm64|armhf|amd64|i386)$ ]]; then
+      _log "Unsupported architecture :: ${arch}"
+      exit 5
+    fi
+    cpuPkg="cpufrequtils"
+    cpuState="cpufrequtils"
+    cpuFreqDef="/etc/default/cpufrequtils"
+    ;;
+
+  trixie)
+    omvCodename="synchrony"
+    version=8
+    flash="writecache"
+    if [[ ! ${arch} =~ ^(arm64|amd64)$ ]]; then
+      _log "Unsupported architecture :: ${arch}"
+      exit 5
+    fi
+    cpuPkg="linux-cpupower"
+    cpuState="cpupower"
+    cpuFreqDef="/etc/default/cpupower"
     ;;
   *)
-    _log "Unsupported version.  Only 11 (Bullseye) and 12 (Bookworm) are supported.  Exiting..."
+    _log "Unsupported version.  Only 12 (Bookworm) and 13 (Trixie) are supported.  Exiting..."
     exit 1
   ;;
 esac
 _log "Debian :: ${codename}"
 _log "${omvCodename} :: ${version}"
+
+if [ ${version} -eq 8 ]; then
+  echo -e "\n\n\nOMV 8.x is currently beta!"
+  echo "Press C to continue, anything else to exit..."
+  read -n1 -r key
+  [[ "$key" =~ ^[Cc]$ ]] || exit 1
+fi
 
 hostname="$(hostname --short)"
 _log "Hostname :: ${hostname}"
@@ -246,21 +251,16 @@ if [[ ! ${hostname} =~ ${regex} ]]; then
     exit 6
 fi
 
+_log "Copying /etc/resolv.conf to ${resolvTmp} ..."
+cp -fv /etc/resolv.conf "${resolvTmp}"
+_log "$(cat /etc/resolv.conf)"
+
 # Add Debian signing keys to raspbian to prevent apt-get update failures
 # when OMV adds security and/or backports repos
 if grep -rq raspberrypi.org /etc/apt/*; then
   rpivers="$(awk '$1 == "Revision" { print $3 }' /proc/cpuinfo)"
   _log "RPi revision code :: ${rpivers}"
-  # https://elinux.org/RPi_HardwareHistory
-  if [[ "${rpivers:0:1}" =~ [09] ]] && [[ ! "${rpivers:0:3}" =~ 902 ]]; then
-    _log "This RPi1 is not supported (not true armhf).  Exiting..."
-    exit 7
-  fi
   rpi=1
-  _log "Adding Debian signing keys..."
-  for key in ${keys}; do
-    apt-key adv --no-tty --keyserver ${keyserver} --recv-keys "${key}" 2>&1 | tee -a ${logfile}
-  done
   _log "Installing monit from raspberrypi repo..."
   apt-get --yes --no-install-recommends install -t ${codename} monit 2>&1 | tee -a ${logfile}
 
@@ -337,6 +337,24 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
     fi
   fi
 
+  saltInstall=$(dpkg -l | awk '$2 == "salt-minion" { print $1 }')
+  if [[ ! "${saltInstall}" == "ii" ]] && [ ${version} -eq 8 ]; then
+    apt-get --yes --no-install-recommends install salt-common salt-minion 2>&1 | tee -a ${logfile}
+    if [ ${PIPESTATUS[0]} -gt 0 ]; then
+      _log "failed installing salt"
+      exit 2
+    fi
+  fi
+
+  omvsaltInstall=$(dpkg -l | awk '$2 == "openmediavault-salt" { print $1 }')
+  if [[ ! "${omvsaltInstall}" == "ii" ]] && [ ${version} -eq 8 ]; then
+    apt-get --yes --no-install-recommends install openmediavault-salt 2>&1 | tee -a ${logfile}
+    if [ ${PIPESTATUS[0]} -gt 0 ]; then
+      _log "failed installing openmediavault-salt"
+      exit 2
+    fi
+  fi
+
   _log "Installing openmediavault..."
   aptFlags="--yes --auto-remove --show-upgraded --allow-downgrades --allow-change-held-packages --no-install-recommends"
   apt-get ${aptFlags} install openmediavault 2>&1 | tee -a ${logfile}
@@ -368,8 +386,12 @@ fi
 . /etc/default/openmediavault
 . /usr/share/openmediavault/scripts/helper-functions
 
+if [ ${version} -eq 8 ]; then
+  /usr/sbin/omv-rpc -u admin "powermgmt" "set" '{"cpufreq":false,"powerbtn":"nothing","standbymode":"poweroff"}'
+fi
+
 # remove backports from sources.list to avoid duplicate sources warning
-sed -i "/\(stretch\|buster\|bullseye\)-backports/d" /etc/apt/sources.list
+sed -i "/\(trixie\|bookworm\)-backports/d" /etc/apt/sources.list
 
 if [ ${rpi} -eq 1 ]; then
   if [ ! "${arch}" = "arm64" ]; then
@@ -391,6 +413,11 @@ if [ ${useMirror} -eq 1 ]; then
 
   # update pillar default list - /srv/pillar/omv/default.sls
   omv-salt stage run prepare 2>&1 | tee -a ${logfile}
+
+# ensure CPU power package is present (varies by OMV version)
+_log "Installing CPU power package: ${cpuPkg} ..."
+apt-get --yes --no-install-recommends install ${cpuPkg} 2>&1 | tee -a ${logfile}
+
 
   # update config files
   ${confCmd} apt 2>&1 | tee -a ${logfile}
@@ -449,24 +476,26 @@ if [ -f "/etc/systemd/system/logrotate.service" ]; then
   systemctl daemon-reload
 fi
 
-# install flashmemory plugin unless disabled
+# install flashmemory/writecache plugin unless disabled
 if [ ${skipFlash} -eq 1 ]; then
-  _log "Skipping installation of the flashmemory plugin."
+  _log "Skipping installation of the ${flash} plugin."
 else
-  _log "Install folder2ram..."
-  apt-get --yes --fix-missing --no-install-recommends install folder2ram 2>&1 | tee -a ${logfile}
-  if [ ${PIPESTATUS[0]} -eq 0 ]; then
-    _log "Installed folder2ram."
-  else
-    _log "Failed to install folder2ram."
+  if [ "${flash}" = "flashmemory" ]; then
+    _log "Install folder2ram..."
+    apt-get --yes --fix-missing --no-install-recommends install folder2ram 2>&1 | tee -a ${logfile}
+    if [ ${PIPESTATUS[0]} -eq 0 ]; then
+      _log "Installed folder2ram."
+    else
+      _log "Failed to install folder2ram."
+    fi
   fi
-  _log "Install flashmemory plugin..."
-  apt-get --yes install openmediavault-flashmemory 2>&1 | tee -a ${logfile}
+  _log "Install ${flash} plugin..."
+  apt-get --yes install openmediavault-${flash} 2>&1 | tee -a ${logfile}
   if [ ${PIPESTATUS[0]} -eq 0 ]; then
-    _log "Installed flashmemory plugin."
+    _log "Installed ${flash} plugin."
   else
-    _log "Failed to install flashmemory plugin."
-    ${confCmd} flashmemory 2>&1 | tee -a ${logfile}
+    _log "Failed to install ${flash} plugin."
+    ${confCmd} ${flash} 2>&1 | tee -a ${logfile}
     apt-get --yes --fix-broken install 2>&1 | tee -a ${logfile}
   fi
 fi
@@ -544,15 +573,25 @@ else
 fi
 
 # set defaults in /etc/default/openmediavault
-omv_set_default "OMV_CPUFREQUTILS_GOVERNOR" "${GOVERNOR}"
-omv_set_default "OMV_CPUFREQUTILS_MINSPEED" "${MIN_SPEED}"
-omv_set_default "OMV_CPUFREQUTILS_MAXSPEED" "${MAX_SPEED}"
+# set defaults in /etc/default/openmediavault
+if [ ${version} -ge 8 ]; then
+  omv_set_default "OMV_CPUPOWER_GOVERNOR" "${GOVERNOR}"
+  omv_set_default "OMV_CPUPOWER_MINSPEED" "${MIN_SPEED}"
+  omv_set_default "OMV_CPUPOWER_MAXSPEED" "${MAX_SPEED}"
+else
+  omv_set_default "OMV_CPUFREQUTILS_GOVERNOR" "${GOVERNOR}"
+  omv_set_default "OMV_CPUFREQUTILS_MINSPEED" "${MIN_SPEED}"
+  omv_set_default "OMV_CPUFREQUTILS_MAXSPEED" "${MAX_SPEED}"
+fi
 
 # update pillar default list - /srv/pillar/omv/default.sls
 omv-salt stage run prepare 2>&1 | tee -a ${logfile}
 
 # update config files
-${confCmd} nginx phpfpm samba flashmemory ssh chrony timezone monit rrdcached collectd cpufrequtils apt watchdog 2>&1 | tee -a ${logfile}
+${confCmd} nginx phpfpm samba ${flash} ssh chrony timezone monit rrdcached collectd ${cpuState} apt watchdog 2>&1 | tee -a ${logfile}
+
+# restart engined
+systemctl restart openmediavault-engined 2>&1 | tee -a ${logfile}
 
 # create php directories if they don't exist
 modDir="/var/lib/php/modules"
@@ -627,14 +666,14 @@ fi
 # add pi user to ssh group if it exists
 if getent passwd pi > /dev/null; then
   _log "Adding pi user to ssh group ..."
-  usermod -a -G ${sshGrp} pi
+  usermod -a -G _ssh pi
 fi
 
 # add user running the script to ssh group if not pi or root
 if [ -n "${SUDO_USER}" ] && [ ! "${SUDO_USER}" = "root" ] && [ ! "${SUDO_USER}" = "pi" ]; then
   if getent passwd ${SUDO_USER} > /dev/null; then
-    _log "Adding ${SUDO_USER} to the ${sshGrp} group ..."
-    usermod -a -G ${sshGrp} ${SUDO_USER}
+    _log "Adding ${SUDO_USER} to the _ssh group ..."
+    usermod -a -G _ssh ${SUDO_USER}
   fi
 fi
 
