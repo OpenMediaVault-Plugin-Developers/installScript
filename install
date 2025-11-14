@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-scriptversion="3.0.0"
+scriptversion="3.0.1"
 
 
 _log()
@@ -339,7 +339,7 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
 
   saltInstall=$(dpkg -l | awk '$2 == "salt-minion" { print $1 }')
   if [[ ! "${saltInstall}" == "ii" ]] && [ ${version} -eq 8 ]; then
-    apt-get --yes --no-install-recommends install salt-common salt-minion 2>&1 | tee -a ${logfile}
+    apt-get --yes --no-install-recommends install salt-common salt-minion python3-samba 2>&1 | tee -a ${logfile}
     if [ ${PIPESTATUS[0]} -gt 0 ]; then
       _log "failed installing salt"
       exit 2
