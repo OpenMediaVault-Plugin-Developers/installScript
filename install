@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-scriptversion="3.0.2"
+scriptversion="3.0.3"
 
 
 _log()
@@ -497,6 +497,9 @@ else
     _log "Failed to install ${flash} plugin."
     ${confCmd} ${flash} 2>&1 | tee -a ${logfile}
     apt-get --yes --fix-broken install 2>&1 | tee -a ${logfile}
+  fi
+  if [ ! "${flash}" = "flashmemory" ]; then
+    omv_config_update "/config/services/writecache/enable" "1"
   fi
 fi
 
