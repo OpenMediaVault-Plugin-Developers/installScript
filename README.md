@@ -16,18 +16,18 @@ For the new user guide, visit https://wiki.omv-extras.org/doku.php?id=omv6:new_u
 
 ### Notes
 - This script will always install
-  - OMV 6.x on Debian 11 (Bullseye)
   - OMV 7.x on Debian 12 (Bookworm)
+  - OMV 8.x on Debian 13 (trixie)
 
-### Installation 
-To install OMV, OMV-Extras and Flashmemory copy and paste this line in the Terminal and press Enter. The installation will take some time, so enjoy the text flying on the screen. 
+### Installation
+To install OMV, OMV-Extras and Flashmemory copy and paste this line in the Terminal and press Enter. The installation will take some time, so enjoy the text flying on the screen.
 
 ***The installation process demands sudo utilization.***
 
 To download and execute the script you can use either *wget* or *curl*, feel free to use what you prefer!
 
 *wget script*
-####  
+####
 ```bash
 sudo wget -O - https://github.com/OpenMediaVault-Plugin-Developers/installScript/raw/master/install | sudo bash
 ```
@@ -37,7 +37,7 @@ sudo wget -O - https://github.com/OpenMediaVault-Plugin-Developers/installScript
 sudo curl -sSL https://github.com/OpenMediaVault-Plugin-Developers/installScript/raw/master/install | sudo bash
 ```
 ### To skip network setup
-If you don't wanna use the network setup steps of the script, please use copy and paste the followings lines to the terminal. 
+If you don't wanna use the network setup steps of the script, please use copy and paste the followings lines to the terminal.
 ```bash
 wget https://github.com/OpenMediaVault-Plugin-Developers/installScript/raw/master/install
 chmod +x install
@@ -50,7 +50,7 @@ openmediavault is primarily designed to be used in home environments or small ho
 For the OMV-Extras documentation, visit https://wiki.omv-extras.org/
 
 For the new user guide, visit https://wiki.omv-extras.org/doku.php?id=omv6:new_user_guide
- 
+
 ### Get help for this script in the forum
 If you got stuck in any part of this script the openmediavault forum will be the place to find a solution https://forum.openmediavault.org/
 
