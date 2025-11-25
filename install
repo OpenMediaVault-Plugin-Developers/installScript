@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-scriptversion="3.0.3"
+scriptversion="3.0.4"
 
 
 _log()
@@ -233,7 +233,8 @@ _log "${omvCodename} :: ${version}"
 
 if [ ${version} -eq 8 ]; then
   echo -e "\n\n\nOMV 8.x is currently beta!"
-  echo "Press C to continue, anything else to exit..."
+  echo -e "\n\nIf you meant to install OMV 7.x, you need to install Debian 12 (Bookworm)"
+  echo -e "\n\nPress C to continue, anything else to exit..."
   read -n1 -r key < /dev/tty
   [[ "$key" =~ ^[Cc]$ ]] || exit 1
 fi
