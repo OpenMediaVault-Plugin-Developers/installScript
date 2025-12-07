@@ -1,0 +1,86 @@
+#!/bin/bash
+#
+# shellcheck disable=SC1090,SC1091,SC1117,SC2016,SC2046,SC2086
+#
+# version: 0.0.1
+#
+
+if [[ $(id -u) -ne 0 ]]; then
+  echo "This script must be executed as root or using sudo."
+  exit 99
+fi
+
+export DEBIAN_FRONTEND=noninteractive
+export APT_LISTCHANGES_FRONTEND=none
+export LANG=C.UTF-8
+
+echo "Removing old sources ..."
+rm -f /etc/apt/sources.list.d/omvextras.list /etc/apt/sources.list.d/omv-extras-org.list
+rm -f /etc/apt/sources.list.d/omvextras.sources /etc/apt/sources.list.d/omv-extras-org.sources
+rm -fv /etc/apt/sources.list.d/pvekernel.list
+rm -fv /etc/apt/sources.list.d/pvekernel.sources
+
+echo "Installing omv-extras 8.x ..."
+url="https://github.com/OpenMediaVault-Plugin-Developers/packages/raw/master/"
+file="openmediavault-omvextrasorg_latest_all8.deb"
+deb="omvextras8.deb"
+wget "${url}/${file}" -O ${deb}
+if [ -f "${deb}" ]; then
+  dpkg -i ${deb}
+fi
+
+echo "Clearing cache ..."
+/usr/bin/salt-call --local saltutil.clear_cache
+omv-salt stage run prepare
+
+echo "Change to bullseye and shaitan just in case ..."
+sed -i "s/bookworm/trixie/g" /etc/apt/sources.list
+sed -i "s/bookworm/trixie/g" /etc/apt/sources.list.d/*
+sed -i "s/sandworm/synchrony/g" /etc/apt/sources.list.d/*
+
+if [ -f /etc/apt/apt.conf ]; then
+  echo "Changing apt.conf ..."
+  sed -i "s/bookworm/trixie/g" /etc/apt/apt.conf
+fi
+
+armbian="/etc/apt/sources.list.d/armbian.list"
+if [ -f "${armbian}" ]; then
+  echo "Fixing Armbian repo ..."
+  echo "deb http://apt.armbian.com trixie main trixie-utils" | tee ${armbian}
+fi
+
+security="/etc/apt/sources.list.d/openmediavault-os-security.list"
+if [ -f "${security}" ]; then
+  echo "Fixing Debian security repo ..."
+  echo "deb http://security.debian.org/debian-security trixie-security main contrib non-free non-free-firmware" | tee ${security}
+fi
+
+echo "Running apt-get update ..."
+if ! apt-get update; then
+  echo "apt-get update failed.  Your repos need to be fixed."
+  exit 1
+fi
+
+echo "Running apt-get dist-upgrade ..."
+apt-get --yes \
+        --option DPkg::Options::="--force-confdef" \
+        --option DPkg::Options::="--force-confold" \
+        dist-upgrade
+
+mkaptidx_url="https://github.com/openmediavault/openmediavault/raw/master/deb/openmediavault/usr/sbin/omv-mkaptidx"
+mkaptidx_path="/usr/sbin/omv-mkaptidx"
+rm -fv "${mkaptidx_path}"
+echo "Downloading omv-mkaptidx..."
+wget --output-document="${mkaptidx_path}" "${mkaptidx_url}"
+chmod +x "${mkaptidx_path}"
+
+echo "Rebuild apt index ..."
+omv-mkaptidx
+
+sudo omv-salt deploy run nginx phpfpm ssh
+sudo systemctl restart nginx
+sudo systemctl restart php8.4-fpm
+
+echo "Done."
+
+exit 0
