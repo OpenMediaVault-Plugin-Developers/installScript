@@ -2,7 +2,7 @@
 #
 # shellcheck disable=SC1090,SC1091,SC1117,SC2016,SC2046,SC2086
 #
-# version: 0.0.9
+# version: 0.0.10
 #
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -68,7 +68,7 @@ apt-get --yes \
         --option DPkg::Options::="--force-confold" \
         dist-upgrade
 
-mkaptidx_url="https://github.com/openmediavault/openmediavault/raw/master/deb/openmediavault/usr/sbin/omv-mkaptidx"
+mkaptidx_url="https://github.com/openmediavault/openmediavault/raw/7.x/deb/openmediavault/usr/sbin/omv-mkaptidx"
 mkaptidx_path="/usr/sbin/omv-mkaptidx"
 rm -fv "${mkaptidx_path}"
 echo "Downloading omv-mkaptidx..."
