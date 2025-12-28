@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-scriptversion="3.0.4"
+scriptversion="3.0.5"
 
 
 _log()
@@ -230,14 +230,6 @@ case ${codename} in
 esac
 _log "Debian :: ${codename}"
 _log "${omvCodename} :: ${version}"
-
-if [ ${version} -eq 8 ]; then
-  echo -e "\n\n\nOMV 8.x is currently beta!"
-  echo -e "\n\nIf you meant to install OMV 7.x, you need to install Debian 12 (Bookworm)"
-  echo -e "\n\nPress C to continue, anything else to exit..."
-  read -n1 -r key < /dev/tty
-  [[ "$key" =~ ^[Cc]$ ]] || exit 1
-fi
 
 hostname="$(hostname --short)"
 _log "Hostname :: ${hostname}"
