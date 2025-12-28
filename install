@@ -15,7 +15,7 @@
 #
 
 logfile="omv_install.log"
-scriptversion="3.0.5"
+scriptversion="3.0.6"
 
 
 _log()
@@ -693,6 +693,9 @@ if [ ${skipNet} -ne 1 ]; then
       echo -e "[Match]\nMACAddress=${mac}\n[Link]\nName=eth0" > /etc/systemd/network/10-persistent-eth0.link
     fi
   fi
+
+  _log "Removing old NetworkManager netplan files..."
+  grep -l NetworkManager /etc/netplan/* | xargs -r rm -fv 2>&1 | tee -a ${logfile}
 
   _log "Removing network-manager and dhcpcd5 ..."
   apt-get -y --autoremove purge network-manager dhcpcd5 2>&1 | tee -a ${logfile}
