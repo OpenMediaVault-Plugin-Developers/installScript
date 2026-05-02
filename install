@@ -146,7 +146,8 @@ ioniceScript="/usr/sbin/omv-ionice"
 mirror="https://mirrors.tuna.tsinghua.edu.cn"
 omvKey="/usr/share/keyrings/openmediavault-archive-keyring.gpg"
 omvRepo="http://packages.openmediavault.org/public"
-omvKeyUrl="${omvRepo}/archive.key"
+omvGhRepo="http://openmediavault.github.io/packages"
+omvKeyUrl="https://openmediavault.github.io/packages/archive.key"
 omvSources="/etc/apt/sources.list.d/openmediavault.list"
 resolvTmp="/root/resolv.conf"
 rfkill="/usr/sbin/rfkill"
@@ -346,7 +347,7 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
   fi
 
   _log "Adding openmediavault repo and key..."
-  echo "deb [signed-by=${omvKey}] ${omvRepo} ${omvCodename} main" | tee ${omvSources}
+  echo "deb [signed-by=${omvKey}] ${omvGhRepo} ${omvCodename} main" | tee ${omvSources}
   wget --quiet --output-document=- "${omvKeyUrl}" | gpg --dearmor --yes --output "${omvKey}"
 
   _log "Updating repos..."
