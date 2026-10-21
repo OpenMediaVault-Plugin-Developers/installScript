@@ -45,6 +45,8 @@ MEM=2048
 CPUS=2
 IMAGE_URL="https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2"
 DOM=""
+QEMU_PID=""
+GRACE=120
 
 usage() { sed -n '2,30p' "$0"; }
 
@@ -109,6 +111,9 @@ SERIAL="${WORK}/serial.log"
 
 # shellcheck disable=SC2317  # invoked via EXIT trap
 cleanup() {
+  if [ -n "${QEMU_PID}" ]; then
+    kill "${QEMU_PID}" 2>/dev/null || true
+  fi
   if [ "${BACKEND}" = libvirt ] && [ -n "${DOM}" ]; then
     virsh -c "${LIBVIRT_URI}" destroy "${DOM}" >/dev/null 2>&1 || true
     virsh -c "${LIBVIRT_URI}" undefine "${DOM}" >/dev/null 2>&1 || true
@@ -143,7 +148,7 @@ runcmd:
   # host's 127.0.0.53 stub, which doesn't work, so resolution fails. Outbound
   # NAT to real IPs is fine, so querying 1.1.1.1/8.8.8.8 directly works. We run
   # the installer with -n, so it never rewrites resolv.conf and this sticks.
-  - bash -c 'exec > /dev/console 2>&1; rm -f /etc/resolv.conf; printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" > /etc/resolv.conf; echo "SMOKE_BEGIN"; bash /root/install -n -r > /var/log/omv-install.log 2>&1; echo "SMOKE_INSTALL_RC=\$?"; dpkg-query -s openmediavault 2>/dev/null | grep -q "install ok installed" && echo "OMV_PKG_STATUS=ii" || echo "OMV_PKG_STATUS=absent"; dpkg-query -s openmediavault-omvextrasorg 2>/dev/null | grep -q "install ok installed" && echo "OMVEXTRAS_PKG_STATUS=ii" || echo "OMVEXTRAS_PKG_STATUS=absent"; echo "SMOKE_END"'
+  - bash -c 'exec > /dev/console 2>&1; rm -f /etc/resolv.conf; printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" > /etc/resolv.conf; echo "SMOKE_BEGIN"; bash /root/install -n -r > /var/log/omv-install.log 2>&1; echo "SMOKE_INSTALL_RC=\$?"; dpkg-query -s openmediavault 2>/dev/null | grep -q "install ok installed" && echo "OMV_PKG_STATUS=ii" || echo "OMV_PKG_STATUS=absent"; dpkg-query -s openmediavault-omvextrasorg 2>/dev/null | grep -q "install ok installed" && echo "OMVEXTRAS_PKG_STATUS=ii" || echo "OMVEXTRAS_PKG_STATUS=absent"; echo "SMOKE_END"; sync; systemctl --no-block poweroff || poweroff -f'
 power_state:
   mode: poweroff
   timeout: 60
@@ -154,22 +159,56 @@ EOF
 echo "==> building cloud-init seed"
 make_seed "${WORK}/user-data" "${WORK}/meta-data" "${SEED}"
 
+# Wait for the guest to stop. The guest powers itself off after SMOKE_END, but
+# cloud-init can crash once the installer has restarted systemd units, leaving
+# the VM up. So once SMOKE_END is on the serial console, give the guest
+# ${GRACE}s to power off and then stop it ourselves; the result comes from the
+# markers either way. Sets ${rc} (0 ok, 124 timeout before SMOKE_END).
+wait_guest() { # <is-running cmd...> -- <stop cmd...>
+  local running=() stop=()
+  while [ "$1" != "--" ]; do running+=("$1"); shift; done
+  shift
+  stop=("$@")
+  local deadline end_at=0 now
+  deadline=$(( $(date +%s) + TIMEOUT ))
+  rc=0
+  while "${running[@]}"; do
+    now=$(date +%s)
+    if [ "${end_at}" -eq 0 ] && grep -aq 'SMOKE_END' "${SERIAL}" 2>/dev/null; then
+      echo "==> SMOKE_END seen; waiting up to ${GRACE}s for guest power off"
+      end_at=$(( now + GRACE ))
+    fi
+    if [ "${end_at}" -ne 0 ] && [ "${now}" -ge "${end_at}" ]; then
+      echo "==> guest did not power off after SMOKE_END; stopping it"
+      "${stop[@]}"
+      break
+    fi
+    if [ "${now}" -ge "${deadline}" ]; then
+      "${stop[@]}"
+      [ "${end_at}" -eq 0 ] && rc=124
+      break
+    fi
+    sleep 5
+  done
+}
+
 # Launch the guest. Each backend sets ${rc} (0 ok, 124 timeout) and writes the
 # guest serial console to ${SERIAL}.
 run_qemu() {
   local accel
   if [ "${TCG}" -eq 1 ]; then accel=(-accel tcg -cpu max); else accel=(-enable-kvm -cpu host); fi
   echo "==> [qemu] booting guest (accel: ${accel[*]}, timeout ${TIMEOUT}s, ${MEM}MB, ${CPUS} vCPU)"
-  set +e
-  timeout "${TIMEOUT}" qemu-system-x86_64 \
+  qemu-system-x86_64 \
     "${accel[@]}" -m "${MEM}" -smp "${CPUS}" \
     -display none -monitor none -serial "file:${SERIAL}" \
     -drive "file=${OVERLAY},if=virtio,format=qcow2" \
     -drive "file=${SEED},if=virtio,format=raw,readonly=on" \
     -netdev user,id=net0 -device virtio-net-pci,netdev=net0 \
-    -no-reboot
-  rc=$?
-  set -e
+    -no-reboot &
+  QEMU_PID=$!
+  wait_guest qemu_running -- qemu_stop
+  wait "${QEMU_PID}" 2>/dev/null || true
+  QEMU_PID=""
 }
 
 run_libvirt() {
@@ -203,19 +242,20 @@ run_libvirt() {
     --serial "file,path=${SERIAL}" >/dev/null
 
   echo "==> [libvirt] waiting for guest to power off (timeout ${TIMEOUT}s)"
-  local deadline; deadline=$(( $(date +%s) + TIMEOUT ))
-  rc=0
-  while virsh -c "${LIBVIRT_URI}" domstate "${DOM}" 2>/dev/null | grep -q running; do
-    if [ "$(date +%s)" -ge "${deadline}" ]; then
-      virsh -c "${LIBVIRT_URI}" destroy "${DOM}" >/dev/null 2>&1 || true
-      rc=124
-      break
-    fi
-    sleep 5
-  done
+  wait_guest dom_running -- dom_destroy
 }
 
+# shellcheck disable=SC2317  # invoked via wait_guest
+qemu_running() { kill -0 "${QEMU_PID}" 2>/dev/null; }
+# shellcheck disable=SC2317  # invoked via wait_guest
+qemu_stop() { kill "${QEMU_PID}" 2>/dev/null || true; }
+# shellcheck disable=SC2317  # invoked via wait_guest
+dom_running() { virsh -c "${LIBVIRT_URI}" domstate "${DOM}" 2>/dev/null | grep -q running; }
+# shellcheck disable=SC2317  # invoked via wait_guest
+dom_destroy() { virsh -c "${LIBVIRT_URI}" destroy "${DOM}" >/dev/null 2>&1 || true; }
+
 echo "==> installer runs INSIDE the VM only (backend: ${BACKEND})"
+echo "==> guest serial log (follow with: tail -f): ${SERIAL}"
 if [ "${BACKEND}" = libvirt ]; then run_libvirt; else run_qemu; fi
 
 # Make the serial log readable without root (it is created 0600 by qemu/libvirt)
