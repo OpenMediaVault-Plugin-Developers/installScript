@@ -15,7 +15,7 @@
 #
 
 logfile="/root/omv_install.log"
-scriptversion="3.2.2"
+scriptversion="3.2.3"
 
 exec > >(stdbuf -oL tee -a "${logfile}") 2> >(stdbuf -oL tee -a "${logfile}" >&2)
 
@@ -231,13 +231,14 @@ ioniceCron="/etc/cron.d/make_nas_processes_faster"
 ioniceScript="/usr/sbin/omv-ionice"
 mirror="https://mirrors.tuna.tsinghua.edu.cn"
 omvKey="/usr/share/keyrings/openmediavault-archive-keyring.gpg"
-omvRepo="http://packages.openmediavault.org/public"
-omvKeyUrl="${omvRepo}/archive.key"
+omvRepo="https://packages.openmediavault.org/public"
+omvAltRepo="https://packages.openmediavault.io"
+omvMirrors="/etc/apt/mirrors/openmediavault.txt"
 omvSources="/etc/apt/sources.list.d/openmediavault.list"
 resolvTmp="/root/resolv.conf"
 rfkill="/usr/sbin/rfkill"
 smbOptions=""
-url="https://github.com/OpenMediaVault-Plugin-Developers/packages/raw/master"
+urls=("https://github.com/OpenMediaVault-Plugin-Developers/packages/raw/master" "https://omv-extras.org")
 
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
@@ -287,6 +288,7 @@ while getopts "fhimnr" opt; do
     m)
       useMirror=1
       omvRepo="${mirror}/OpenMediaVault/public"
+      omvAltRepo="${mirror}/OpenMediaVault/packages"
       ;;
     n)
       skipNet=1
@@ -415,23 +417,46 @@ if [[ ! "${omvInstall}" == "ii" ]]; then
   fi
 
   _log "Adding openmediavault repo and key..."
+  omvMirrorList=(
+    "${omvRepo}/"
+    "${omvAltRepo}/"
+    "https://openmediavault.github.io/packages/"
+    "https://downloads.sourceforge.net/project/openmediavault/packages/"
+  )
   keyTmp=$(mktemp)
-  if ! wget --no-verbose --tries=3 --timeout=30 --waitretry=5 --output-document="${keyTmp}" "${omvKeyUrl}"; then
-    _log "failed to download openmediavault key from ${omvKeyUrl}"
-    keyHost="${omvKeyUrl#*://}"
-    _log "check network/DNS from this system: getent hosts ${keyHost%%/*}"
-    rm -f "${keyTmp}"
-    exit 7
-  fi
-  if ! gpg --show-keys "${keyTmp}" >/dev/null 2>&1; then
-    _log "downloaded file from ${omvKeyUrl} is not a valid OpenPGP key. First bytes:"
-    head -c 200 "${keyTmp}"; echo
+  keyOk=0
+  for omvMirror in "${omvMirrorList[@]}"; do
+    omvKeyUrl="${omvMirror}archive.key"
+    if ! wget --no-verbose --tries=3 --timeout=30 --waitretry=5 --output-document="${keyTmp}" "${omvKeyUrl}"; then
+      _log "failed to download openmediavault key from ${omvKeyUrl}"
+      keyHost="${omvKeyUrl#*://}"
+      _log "check network/DNS from this system: getent hosts ${keyHost%%/*}"
+      continue
+    fi
+    if ! gpg --show-keys "${keyTmp}" >/dev/null 2>&1; then
+      _log "downloaded file from ${omvKeyUrl} is not a valid OpenPGP key. First bytes:"
+      head -c 200 "${keyTmp}"; echo
+      continue
+    fi
+    keyOk=1
+    break
+  done
+  if [ ${keyOk} -ne 1 ]; then
+    _log "failed to download a valid openmediavault key from any mirror"
     rm -f "${keyTmp}"
     exit 7
   fi
   gpg --dearmor --yes --output "${omvKey}" "${keyTmp}"
   rm -f "${keyTmp}"
-  echo "deb [signed-by=${omvKey}] ${omvRepo} ${omvCodename} main" | tee ${omvSources}
+  # The mirrors are tried in the order of their priority (lowest number first).
+  # See https://manpages.debian.org/unstable/apt/apt-transport-mirror.1.html
+  mkdir -p "$(dirname "${omvMirrors}")"
+  priority=1
+  for omvMirror in "${omvMirrorList[@]}"; do
+    printf '%s\tpriority:%d\n' "${omvMirror}" "${priority}"
+    priority=$((priority + 1))
+  done | tee "${omvMirrors}"
+  echo "deb [signed-by=${omvKey}] mirror+file:${omvMirrors} ${omvCodename} main" | tee ${omvSources}
 
   _log "Updating repos..."
   if ! ag_install update; then
@@ -537,7 +562,14 @@ file="openmediavault-omvextrasorg_latest_all${version}.deb"
 if [ -f "${file}" ]; then
   rm "${file}"
 fi
-wget ${url}/${file}
+for url in "${urls[@]}"; do
+  if wget --no-verbose --tries=3 --timeout=30 --waitretry=5 --output-document="${file}" "${url}/${file}" && \
+     dpkg-deb --info "${file}" >/dev/null 2>&1; then
+    break
+  fi
+  _log "failed to download a valid package from ${url}/${file}"
+  rm -f "${file}"
+done
 if [ -f "${file}" ]; then
   if ! dpkg --install ${file}; then
     _log "Installing other dependencies ..."
